@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Dados BuJo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100dvh;
+        overflow: hidden;
+        font-family: system-ui, sans-serif;
+        background: #f5f5f5;
+        color: #222;
+      }
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Zona del dado */
+      #pantalla {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 1rem;
+        text-align: center;
+        min-height: 0;
+      }
+      #etiqueta {
+        font-size: 1rem;
+        color: #666;
+        margin-bottom: 0.25rem;
+      }
+      #dado {
+        font-size: 3.5rem;
+        font-weight: bold;
+        line-height: 1;
+        transition: transform 0.15s ease;
+      }
+      #dado.rolling {
+        transform: scale(1.1);
+      }
+      #resultado {
+        font-size: 1.2rem;
+        margin-top: 0.5rem;
+        font-weight: 500;
+        min-height: 1.5rem;
+      }
+      .dado-multi {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: 0.75rem;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .dado-card {
+        background: #fff;
+        border-radius: 10px;
+        padding: 8px 10px;
+        min-width: 70px;
+        text-align: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+      .dado-card .dc-label {
+        font-size: 0.65rem;
+        font-weight: 600;
+        color: #666;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+      }
+      .dado-card .dc-num {
+        font-size: 1.8rem;
+        font-weight: bold;
+        line-height: 1;
+      }
+      .dado-card .dc-res {
+        font-size: 0.7rem;
+        margin-top: 3px;
+        color: #444;
+      }
+
+      /* Panel de stats en 2x2 */
+      #stats-panel {
+        background: #e5e5e5;
+        padding: 8px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+      .stat-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #fff;
+        padding: 6px 12px;
+        border-radius: 8px;
+      }
+      .stat-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #666;
+        text-transform: uppercase;
+      }
+      .stat-value {
+        font-size: 1rem;
+        font-weight: bold;
+        min-width: 18px;
+        text-align: center;
+      }
+      .stat-btn {
+        width: 28px;
+        height: 28px;
+        border: none;
+        border-radius: 6px;
+        background: #222;
+        color: #fff;
+        font-size: 1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        touch-action: manipulation;
+      }
+      .stat-btn:active {
+        background: #444;
+      }
+      .stat-btn:disabled {
+        background: #aaa;
+        cursor: not-allowed;
+      }
+
+      /* Inventario */
+      #inventario-panel {
+        background: #e5e5e5;
+        padding: 6px 8px;
+        display: flex;
+        gap: 6px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .slot {
+        width: 38px;
+        height: 38px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        cursor: pointer;
+        transition: transform 0.1s;
+        touch-action: manipulation;
+      }
+      .slot:active {
+        transform: scale(0.9);
+      }
+      .slot.empty {
+        background: #fff;
+        border: 2px dashed #bbb;
+      }
+      .slot.filled {
+        background: #fff;
+        border: 2px solid #222;
+      }
+
+      /* Botones de acción */
+      #controles {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        padding: 10px;
+        background: #e5e5e5;
+      }
+      button.action-btn {
+        font-size: 0.95rem;
+        padding: 0.8rem 0;
+        border: none;
+        border-radius: 8px;
+        background: #222;
+        color: #fff;
+        cursor: pointer;
+        touch-action: manipulation;
+        min-height: 48px;
+        width: 100%;
+        font-weight: 500;
+      }
+      button.action-btn:active {
+        background: #444;
+      }
+      button.action-btn:disabled {
+        background: #888;
+        cursor: not-allowed;
+      }
+
+      /* Menú flotante de ítems */
+      #backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.3);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s;
+        z-index: 9;
+      }
+      #backdrop.active {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      #item-picker {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #fff;
+        padding: 15px;
+        transform: translateY(100%);
+        transition: transform 0.3s ease;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1);
+        z-index: 10;
+        border-radius: 16px 16px 0 0;
+      }
+      #item-picker.active {
+        transform: translateY(0);
+      }
+      .item-btn {
+        padding: 14px 8px;
+        border: none;
+        border-radius: 10px;
+        background: #f0f0f0;
+        color: #222;
+        font-size: 0.95rem;
+        font-weight: 500;
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+      .item-btn:active {
+        background: #ddd;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="pantalla">
+      <div id="etiqueta">Tira un dado</div>
+      <p id="dado">-</p>
+      <div id="resultado">-</div>
+      <div id="resultado-multi"></div>
+    </div>
+
+    <div id="stats-panel">
+      <div class="stat-row" data-stat="hp">
+        <span class="stat-label">HP</span>
+        <button class="stat-btn minus">-</button>
+        <span class="stat-value">10</span>
+        <button class="stat-btn plus">+</button>
+      </div>
+      <div class="stat-row" data-stat="fuerza">
+        <span class="stat-label">FUE</span>
+        <button class="stat-btn minus">-</button>
+        <span class="stat-value">3</span>
+        <button class="stat-btn plus">+</button>
+      </div>
+      <div class="stat-row" data-stat="escudo">
+        <span class="stat-label">ESC</span>
+        <button class="stat-btn minus">-</button>
+        <span class="stat-value">3</span>
+        <button class="stat-btn plus">+</button>
+      </div>
+      <div class="stat-row" data-stat="mochila">
+        <span class="stat-label">MOCH</span>
+        <button class="stat-btn minus">-</button>
+        <span class="stat-value">4</span>
+        <button class="stat-btn plus">+</button>
+      </div>
+    </div>
+
+    <div id="inventario-panel"></div>
+
+    <div id="controles">
+      <button class="action-btn" onclick="tirar('sala')">Sala</button>
+      <button class="action-btn" onclick="tirar('puertas')">Puertas</button>
+      <button class="action-btn" onclick="tirar('enemigos')">Enemigos</button>
+      <button class="action-btn" onclick="tirar('cofre')">Cofre</button>
+      <button class="action-btn" onclick="tirar('contenido')">Contenido</button>
+      <button class="action-btn" onclick="tirar('batalla')">Batalla</button>
+      <button class="action-btn" onclick="tirarTodo()" style="background: #4a2; grid-column: 1 / -1;">Tirar Todo</button>
+    </div>
+
+    <div id="backdrop" onclick="cerrarPicker()"></div>
+    <div id="item-picker">
+      <button class="item-btn" onclick="seleccionarItem('pocion')">
+        🧪 Poción
+      </button>
+      <button class="item-btn" onclick="seleccionarItem('reparador')">
+        🛡️ Reparador
+      </button>
+      <button class="item-btn" onclick="seleccionarItem('bomba')">
+        💣 Bomba
+      </button>
+      <button class="item-btn" onclick="seleccionarItem('pergamino')">
+        📜 Pergamino
+      </button>
+    </div>
+
+    <script>
+      // --- DADO ---
+      const etiqueta = document.getElementById("etiqueta");
+      const dado = document.getElementById("dado");
+      const resultado = document.getElementById("resultado");
+      const botones = document.querySelectorAll("#controles button");
+
+      function mostrar(nombre, num, res) {
+        etiqueta.textContent = nombre;
+        dado.textContent = num;
+        resultado.textContent = res;
+      }
+
+      function tirar(tabla) {
+        if (dado.classList.contains("rolling")) return;
+        document.getElementById("resultado-multi").innerHTML = "";
+        dado.classList.add("rolling");
+        botones.forEach((b) => (b.disabled = true));
+
+        let finalR = Math.ceil(Math.random() * 6);
+        let ticks = 0;
+        const interval = setInterval(() => {
+          dado.textContent = Math.ceil(Math.random() * 6);
+          if (++ticks >= 12) {
+            clearInterval(interval);
+            dado.classList.remove("rolling");
+            botones.forEach((b) => (b.disabled = false));
+
+            if (tabla === "batalla") {
+              mostrar(
+                "Turno de Combate",
+                finalR,
+                finalR >= 4 ? "Acierto" : "Fallo",
+              );
+              return;
+            }
+            dado.textContent = finalR;
+            if (tabla === "sala")
+              mostrar(
+                "Tamaño de Sala",
+                finalR,
+                finalR <= 2
+                  ? "3 casillas"
+                  : finalR <= 4
+                    ? "4 casillas"
+                    : finalR === 5
+                      ? "5 casillas"
+                      : "6 casillas",
+              );
+            else if (tabla === "puertas")
+              mostrar(
+                "Puertas adicionales",
+                finalR,
+                finalR <= 4 ? "+1 puerta" : "+2 puertas",
+              );
+            else if (tabla === "enemigos")
+              mostrar(
+                "Cantidad de enemigos",
+                finalR,
+                finalR <= 2
+                  ? "1 enemigo"
+                  : finalR <= 4
+                    ? "2 enemigos"
+                    : "3 enemigos",
+              );
+            else if (tabla === "cofre")
+              mostrar(
+                "Presencia de cofre",
+                finalR,
+                finalR <= 3 ? "No hay cofre" : "Cofre abierto",
+              );
+            else if (tabla === "contenido")
+              mostrar(
+                "Contenido del cofre",
+                finalR,
+                finalR === 1
+                  ? "💥 Trampa (-1 HP)"
+                  : finalR === 2
+                    ? "Poción de Curación"
+                    : finalR === 3
+                      ? "Reparador de Escudo"
+                      : finalR === 4
+                        ? "Pergamino de Mejora"
+                        : "Bomba de Escape",
+              );
+          }
+        }, 60);
+      }
+
+      function tirarTodo() {
+        if (dado.classList.contains("rolling")) return;
+        document.getElementById("resultado-multi").innerHTML = "";
+        etiqueta.textContent = "Tira un dado";
+        dado.textContent = "-";
+        resultado.textContent = "-";
+        dado.classList.add("rolling");
+        botones.forEach((b) => (b.disabled = true));
+
+        const tablas = ["sala", "puertas", "enemigos", "cofre", "contenido"];
+        const resultados = {};
+        tablas.forEach((t) => (resultados[t] = Math.ceil(Math.random() * 6)));
+
+        let ticks = 0;
+        const interval = setInterval(() => {
+          tablas.forEach((t) => {
+            const el = document.getElementById("dm-" + t);
+            if (el) el.textContent = Math.ceil(Math.random() * 6);
+          });
+          if (++ticks >= 12) {
+            clearInterval(interval);
+            dado.classList.remove("rolling");
+            botones.forEach((b) => (b.disabled = false));
+
+            etiqueta.textContent = "Exploración completa";
+            dado.textContent = "🎲";
+            resultado.innerHTML = '<div class="dado-multi">' +
+              tablas
+                .map((t) => {
+                  const r = resultados[t];
+                  let res = "";
+                  if (t === "sala")
+                    res = r <= 2 ? "3 casillas" : r <= 4 ? "4 casillas" : r === 5 ? "5 casillas" : "6 casillas";
+                  else if (t === "puertas") res = r <= 4 ? "+1 puerta" : "+2 puertas";
+                  else if (t === "enemigos") res = r <= 2 ? "1 enemigo" : r <= 4 ? "2 enemigos" : "3 enemigos";
+                  else if (t === "cofre") res = r <= 3 ? "No hay cofre" : "Cofre abierto";
+                  else if (t === "contenido")
+                    res = r === 1 ? "💥 Trampa" : r === 2 ? "🧪 Poción" : r === 3 ? "🛡️ Reparador" : r === 4 ? "📜 Pergamino" : "💣 Bomba";
+                  return '<div class="dado-card"><div class="dc-label">' + t + '</div><div class="dc-num" id="dm-' + t + '">' + r + '</div><div class="dc-res">' + res + '</div></div>';
+                })
+                .join("") +
+              "</div>";
+          }
+        }, 60);
+      }
+
+      // --- STATS E INVENTARIO ---
+      const stats = { hp: 10, fuerza: 3, escudo: 3, mochila: 4 };
+      let inventario = [null, null, null, null];
+      let slotSeleccionado = -1;
+
+      const itemsData = {
+        pocion: "🧪",
+        reparador: "🛡️",
+        bomba: "💣",
+        pergamino: "📜",
+      };
+
+      function updateStatDisplay(stat) {
+        const row = document.querySelector(`.stat-row[data-stat="${stat}"]`);
+        row.querySelector(".stat-value").textContent = stats[stat];
+        row.querySelector(".minus").disabled = stats[stat] <= 0;
+
+        if (stat === "mochila") {
+          ajustarInventario();
+          renderInventario();
+        }
+      }
+
+      function ajustarInventario() {
+        const target = stats.mochila;
+        if (inventario.length < target) {
+          while (inventario.length < target) inventario.push(null);
+        } else if (inventario.length > target) {
+          inventario = inventario.slice(0, target);
+        }
+      }
+
+      function renderInventario() {
+        const panel = document.getElementById("inventario-panel");
+        panel.innerHTML = "";
+        inventario.forEach((item, index) => {
+          const slot = document.createElement("div");
+          slot.className = "slot " + (item ? "filled" : "empty");
+          slot.textContent = item ? itemsData[item] : "";
+          slot.onclick = () => manejarSlot(index);
+          panel.appendChild(slot);
+        });
+      }
+
+      function manejarSlot(index) {
+        if (inventario[index]) {
+          inventario[index] = null; // Eliminar item
+          renderInventario();
+        } else {
+          slotSeleccionado = index;
+          document.getElementById("item-picker").classList.add("active");
+          document.getElementById("backdrop").classList.add("active");
+        }
+      }
+
+      function seleccionarItem(tipo) {
+        if (slotSeleccionado !== -1) {
+          inventario[slotSeleccionado] = tipo;
+          renderInventario();
+        }
+        cerrarPicker();
+      }
+
+      function cerrarPicker() {
+        document.getElementById("item-picker").classList.remove("active");
+        document.getElementById("backdrop").classList.remove("active");
+        slotSeleccionado = -1;
+      }
+
+      document.querySelectorAll(".stat-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const stat = btn.closest(".stat-row").dataset.stat;
+          const delta = btn.classList.contains("plus") ? 1 : -1;
+          if (stats[stat] + delta >= 0) {
+            stats[stat] += delta;
+            updateStatDisplay(stat);
+          }
+        });
+      });
+
+      // Init
+      renderInventario();
+    </script>
+  </body>
+</html>
