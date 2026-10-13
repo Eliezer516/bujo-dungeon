@@ -228,6 +228,21 @@ body {
   grid-column: 1 / -1;
 }
 
+.cofre-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  width: 100%;
+  max-width: 320px;
+}
+
+.cofre-btn {
+  width: 100%;
+  max-width: 320px;
+}
+
 .config-btn {
   grid-column: 1 / -1;
   min-height: 36px;

@@ -98,6 +98,7 @@ function App() {
   const [resultado, setResultado] = useState("-");
   const [cartasTodo, setCartasTodo] = useState([]);
   const [combate, setCombate] = useState(null);
+  const [cofreAbierto, setCofreAbierto] = useState(false);
 
   const [stats, setStats] = useState({
     hp: 10,
@@ -163,9 +164,12 @@ function App() {
     setDado("-");
     setResultado("-");
     setCombate(null);
+    setCofreAbierto(false);
 
     const resultados = {};
     TABLAS.forEach((t) => (resultados[t] = rollD6()));
+
+    const hayCofre = resultados["cofre"] > 3;
 
     start(
       () => {
@@ -175,7 +179,7 @@ function App() {
             const r = rollD6();
             return { tabla: t, num: r, res: RESULTADOS[t](r) };
           }).filter(
-            ({ tabla }) => tabla !== "contenido" || resultados["cofre"] > 3,
+            ({ tabla }) => tabla !== "contenido" || hayCofre,
           ),
         );
       },
@@ -187,10 +191,11 @@ function App() {
           TABLAS.map((t) => ({
             tabla: t,
             num: resultados[t],
-            res: RESULTADOS[t](resultados[t]),
+            res: t === "contenido" && hayCofre ? "Cerrado" : RESULTADOS[t](resultados[t]),
+            contenidoReal: t === "contenido" ? RESULTADOS[t](resultados[t]) : undefined,
           })).filter(({ tabla }) => {
             if (tabla !== "contenido") return true;
-            return resultados["cofre"] > 3;
+            return hayCofre;
           }),
         );
       },
@@ -235,8 +240,8 @@ function App() {
           <>
             <div className="dado-multi">
               {cartasTodo.length > 0
-                ? cartasTodo.map(({ tabla, num, res }) => (
-                    <div className={`dado-card${tabla === "contenido" ? " wide" : ""}`} key={tabla}>
+                ? cartasTodo.filter(({ tabla }) => tabla !== "contenido").map(({ tabla, num, res }) => (
+                    <div className="dado-card" key={tabla}>
                       <div className="dc-label">{tabla}</div>
                       <div className="dc-num">{num}</div>
                       <div className="dc-res">{res}</div>
@@ -255,6 +260,31 @@ function App() {
                 <div className="dc-res">{combate ? combate.res : "-"}</div>
               </div>
             </div>
+            {cartasTodo.some((c) => c.tabla === "contenido") && (
+              <div className="cofre-zone">
+                <div className="dado-card wide">
+                  <div className="dc-label">Contenido</div>
+                  <div className="dc-num">{cartasTodo.find((c) => c.tabla === "contenido").num}</div>
+                  <div className="dc-res">
+                    {cofreAbierto
+                      ? cartasTodo.find((c) => c.tabla === "contenido").contenidoReal
+                      : "Cerrado"}
+                  </div>
+                </div>
+                {!cofreAbierto && (
+                  <button
+                    className="action-btn cofre-btn"
+                    onClick={() => {
+                      trigger([{ duration: 25 }], { intensity: 0.5 });
+                      setCofreAbierto(true);
+                    }}
+                    disabled={rolling}
+                  >
+                    Abrir Cofre
+                  </button>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
