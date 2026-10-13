@@ -64,6 +64,10 @@ body {
   max-width: 320px;
 }
 
+.dado-card.wide {
+  grid-column: 1 / -1;
+}
+
 .dado-card {
   background: #fff;
   border-radius: 10px;

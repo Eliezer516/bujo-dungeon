@@ -231,7 +231,7 @@ function App() {
             <div className="dado-multi">
               {cartasTodo.length > 0
                 ? cartasTodo.map(({ tabla, num, res }) => (
-                    <div className="dado-card" key={tabla}>
+                    <div className={`dado-card${tabla === "contenido" ? " wide" : ""}`} key={tabla}>
                       <div className="dc-label">{tabla}</div>
                       <div className="dc-num">{num}</div>
                       <div className="dc-res">{res}</div>
@@ -244,7 +244,7 @@ function App() {
                       <div className="dc-res"></div>
                     </div>
                   ))}
-              <div className="dado-card">
+              <div className="dado-card wide">
                 <div className="dc-label">Combate</div>
                 <div className="dc-num">{combate ? combate.num : "-"}</div>
                 <div className="dc-res">{combate ? combate.res : "-"}</div>
