@@ -56,11 +56,12 @@ body {
 }
 
 .dado-multi {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 0.75rem;
   margin-top: 0.75rem;
-  flex-wrap: wrap;
-  justify-content: center;
+  width: 100%;
+  max-width: 320px;
 }
 
 .dado-card {
@@ -90,6 +91,10 @@ body {
   font-size: 0.7rem;
   margin-top: 3px;
   color: #444;
+}
+
+.dado-card.placeholder {
+  opacity: 0.4;
 }
 
 .stats-panel {
@@ -215,7 +220,7 @@ body {
 }
 
 .todo-btn {
-  background: #4a2;
+  background: #222222;
   grid-column: 1 / -1;
 }
 
@@ -342,7 +347,7 @@ body {
 }
 
 .slider::after {
-  content: '';
+  content: "";
   position: absolute;
   width: 22px;
   height: 22px;

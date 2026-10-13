@@ -88,7 +88,7 @@ function App() {
   const [etiqueta, setEtiqueta] = useState("Tira un dado");
   const [dado, setDado] = useState("-");
   const [resultado, setResultado] = useState("-");
-  const [resultadoMulti, setResultadoMulti] = useState(null);
+  const [cartasTodo, setCartasTodo] = useState([]);
 
   const [stats, setStats] = useState({
     hp: 10,
@@ -120,7 +120,7 @@ function App() {
 
   const tirar = (tabla) => {
     if (rolling) return;
-    setResultadoMulti(null);
+    setCartasTodo([]);
     const finalR = rollD6();
     start(
       () => setDado(rollD6()),
@@ -139,7 +139,6 @@ function App() {
 
   const tirarTodo = () => {
     if (rolling) return;
-    setResultadoMulti(null);
     setEtiqueta("Tira un dado");
     setDado("-");
     setResultado("-");
@@ -148,12 +147,22 @@ function App() {
     TABLAS.forEach((t) => (resultados[t] = rollD6()));
 
     start(
-      () => setDado(rollD6()),
+      () => {
+        setDado(rollD6());
+        setCartasTodo(
+          TABLAS.map((t) => {
+            const r = rollD6();
+            return { tabla: t, num: r, res: RESULTADOS[t](r) };
+          }).filter(
+            ({ tabla }) => tabla !== "contenido" || resultados["cofre"] > 3,
+          ),
+        );
+      },
       () => {
         setEtiqueta("Exploración completa");
         setDado("🎲");
         setResultado("");
-        setResultadoMulti(
+        setCartasTodo(
           TABLAS.map((t) => ({
             tabla: t,
             num: resultados[t],
@@ -195,17 +204,29 @@ function App() {
     <>
       <div className="pantalla">
         <div className="etiqueta">{etiqueta}</div>
-        <p className={`dado ${rolling ? "rolling" : ""}`}>{dado}</p>
-        <div className="resultado">{resultado}</div>
-        {resultadoMulti && (
+        {!modoTodo && (
+          <>
+            <p className={`dado ${rolling ? "rolling" : ""}`}>{dado}</p>
+            <div className="resultado">{resultado}</div>
+          </>
+        )}
+        {modoTodo && (
           <div className="dado-multi">
-            {resultadoMulti.map(({ tabla, num, res }) => (
-              <div className="dado-card" key={tabla}>
-                <div className="dc-label">{tabla}</div>
-                <div className="dc-num">{num}</div>
-                <div className="dc-res">{res}</div>
-              </div>
-            ))}
+            {cartasTodo.length > 0
+              ? cartasTodo.map(({ tabla, num, res }) => (
+                  <div className="dado-card" key={tabla}>
+                    <div className="dc-label">{tabla}</div>
+                    <div className="dc-num">{num}</div>
+                    <div className="dc-res">{res}</div>
+                  </div>
+                ))
+              : TABLAS.map((t) => (
+                  <div className="dado-card placeholder" key={t}>
+                    <div className="dc-label">{t}</div>
+                    <div className="dc-num">-</div>
+                    <div className="dc-res"></div>
+                  </div>
+                ))}
           </div>
         )}
       </div>
@@ -337,7 +358,11 @@ function App() {
                 <input
                   type="checkbox"
                   checked={modoTodo}
-                  onChange={(e) => setModoTodo(e.target.checked)}
+                  onChange={(e) => {
+                    const activado = e.target.checked;
+                    setModoTodo(activado);
+                    if (activado) setCartasTodo([]);
+                  }}
                 />
                 <span className="slider" />
               </label>
