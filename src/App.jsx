@@ -343,7 +343,7 @@ function App() {
           </>
         )}
         {modoTodo && (
-          <div>
+          <>
             <button
               className="action-btn todo-btn"
               onClick={tirarTodo}
@@ -358,7 +358,7 @@ function App() {
             >
               Combate
             </button>
-          </div>
+          </>
         )}
       </div>
 
