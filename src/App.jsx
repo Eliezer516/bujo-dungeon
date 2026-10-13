@@ -69,8 +69,8 @@ function useRolling() {
       intervalRef.current = setInterval(() => {
         onTick?.();
         if (++count >= ticks) {
-          stop();
           onDone?.();
+          stop();
         }
       }, delay);
     },
@@ -83,7 +83,7 @@ function useRolling() {
 }
 
 function App() {
-  const haptic = useWebHaptics();
+  const { trigger } = useWebHaptics();
 
   const [modoTodo, setModoTodo] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
@@ -92,6 +92,7 @@ function App() {
   const [dado, setDado] = useState("-");
   const [resultado, setResultado] = useState("-");
   const [cartasTodo, setCartasTodo] = useState([]);
+  const [combate, setCombate] = useState(null);
 
   const [stats, setStats] = useState({
     hp: 10,
@@ -123,16 +124,25 @@ function App() {
 
   const tirar = (tabla) => {
     if (rolling) return;
-    haptic.trigger("medium");
-    setCartasTodo([]);
+    trigger([{ duration: 25 }], { intensity: 0.7 });
+    if (!(modoTodo && tabla === "batalla")) setCartasTodo([]);
     const finalR = rollD6();
     start(
-      () => setDado(rollD6()),
+      () => {
+        setDado(rollD6());
+        if (modoTodo && tabla === "batalla") {
+          const r = rollD6();
+          const res = r >= 4 ? "Acierto" : "Fallo";
+          setCombate({ num: r, res });
+        }
+      },
       () => {
         setDado(finalR);
         if (tabla === "batalla") {
-          setEtiqueta(ETIQUETAS[tabla]);
-          setResultado(finalR >= 4 ? "Acierto" : "Fallo");
+          const res = finalR >= 4 ? "Acierto" : "Fallo";
+          setEtiqueta(modoTodo ? res : ETIQUETAS[tabla]);
+          setResultado(res);
+          if (modoTodo) setCombate({ num: finalR, res });
         } else {
           setEtiqueta(ETIQUETAS[tabla]);
           setResultado(RESULTADOS[tabla](finalR));
@@ -143,10 +153,11 @@ function App() {
 
   const tirarTodo = () => {
     if (rolling) return;
-    haptic.trigger("medium");
+    trigger([{ duration: 25 }], { intensity: 0.7 });
     setEtiqueta("Tira un dado");
     setDado("-");
     setResultado("-");
+    setCombate(null);
 
     const resultados = {};
     TABLAS.forEach((t) => (resultados[t] = rollD6()));
@@ -232,6 +243,12 @@ function App() {
                     <div className="dc-res"></div>
                   </div>
                 ))}
+            <hr />
+            <div className="dado-card">
+              <div className="dc-label">Combate</div>
+              <div className="dc-num">{combate ? combate.num : "-"}</div>
+              <div className="dc-res">{combate ? combate.res : "-"}</div>
+            </div>
           </div>
         )}
       </div>
@@ -326,13 +343,22 @@ function App() {
           </>
         )}
         {modoTodo && (
-          <button
-            className="action-btn todo-btn"
-            onClick={tirarTodo}
-            disabled={rolling}
-          >
-            Tirar Todo
-          </button>
+          <div>
+            <button
+              className="action-btn todo-btn"
+              onClick={tirarTodo}
+              disabled={rolling}
+            >
+              Tirar Todo
+            </button>
+            <button
+              className="action-btn todo-btn"
+              onClick={() => tirar("batalla")}
+              disabled={rolling}
+            >
+              Combate
+            </button>
+          </div>
         )}
       </div>
 
@@ -376,7 +402,10 @@ function App() {
                   onChange={(e) => {
                     const activado = e.target.checked;
                     setModoTodo(activado);
-                    if (activado) setCartasTodo([]);
+                    if (activado) {
+                      setCartasTodo([]);
+                      setCombate(null);
+                    }
                   }}
                 />
                 <span className="slider" />
