@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "markdown-it": "^15.0.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "web-haptics": "^0.0.6"

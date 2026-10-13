@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useWebHaptics } from "web-haptics/react";
+import MarkdownIt from "markdown-it";
 import "./App.css";
+import reglas from "../reglas.md?raw";
+
+const md = new MarkdownIt();
 
 const TABLAS = ["sala", "puertas", "enemigos", "cofre", "contenido"];
 
@@ -87,6 +91,7 @@ function App() {
 
   const [modoTodo, setModoTodo] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
+  const [reglasOpen, setReglasOpen] = useState(false);
 
   const [etiqueta, setEtiqueta] = useState("Tira un dado");
   const [dado, setDado] = useState("-");
@@ -364,6 +369,14 @@ function App() {
       </div>
 
       <button
+        className="reglas-fab"
+        onClick={() => setReglasOpen(true)}
+        aria-label="Reglas"
+      >
+        ?
+      </button>
+
+      <button
         className="config-fab"
         onClick={() => setConfigOpen(true)}
         aria-label="Configuración"
@@ -412,6 +425,27 @@ function App() {
                 <span className="slider" />
               </label>
             </div>
+          </div>
+        </div>
+      )}
+
+      {reglasOpen && (
+        <div className="modal-backdrop" onClick={() => setReglasOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Reglas</h2>
+              <button
+                className="modal-close"
+                onClick={() => setReglasOpen(false)}
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+            <div
+              className="modal-body reglas-body"
+              dangerouslySetInnerHTML={{ __html: md.render(reglas) }}
+            />
           </div>
         </div>
       )}

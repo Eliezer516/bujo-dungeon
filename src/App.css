@@ -259,6 +259,100 @@ body {
   background: #444;
 }
 
+.reglas-fab {
+  position: fixed;
+  top: 12px;
+  right: 64px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: #222;
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  touch-action: manipulation;
+}
+
+.reglas-fab:active {
+  background: #444;
+}
+
+.reglas-body {
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.reglas-body h1 {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+
+.reglas-body h3 {
+  font-size: 0.95rem;
+  margin: 1rem 0 0.4rem;
+}
+
+.reglas-body p {
+  margin: 0.4rem 0;
+}
+
+.reglas-body ul,
+.reglas-body ol {
+  padding-left: 1.2rem;
+  margin: 0.4rem 0;
+}
+
+.reglas-body li {
+  margin: 0.2rem 0;
+}
+
+.reglas-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  font-size: 0.8rem;
+}
+
+.reglas-body th,
+.reglas-body td {
+  border: 1px solid #ddd;
+  padding: 4px 6px;
+  text-align: left;
+}
+
+.reglas-body th {
+  background: #f0f0f0;
+}
+
+.reglas-body blockquote {
+  border-left: 3px solid #ccc;
+  margin: 0.5rem 0;
+  padding-left: 0.75rem;
+  color: #555;
+}
+
+.reglas-body code {
+  background: #f0f0f0;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.8rem;
+}
+
+.reglas-body pre {
+  background: #f5f5f5;
+  padding: 8px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
