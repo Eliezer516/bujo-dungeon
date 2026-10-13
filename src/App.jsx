@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useWebHaptics } from "web-haptics/react";
 import "./App.css";
 
 const TABLAS = ["sala", "puertas", "enemigos", "cofre", "contenido"];
@@ -82,6 +83,8 @@ function useRolling() {
 }
 
 function App() {
+  const haptic = useWebHaptics();
+
   const [modoTodo, setModoTodo] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
 
@@ -120,6 +123,7 @@ function App() {
 
   const tirar = (tabla) => {
     if (rolling) return;
+    haptic.trigger("medium");
     setCartasTodo([]);
     const finalR = rollD6();
     start(
@@ -139,6 +143,7 @@ function App() {
 
   const tirarTodo = () => {
     if (rolling) return;
+    haptic.trigger("medium");
     setEtiqueta("Tira un dado");
     setDado("-");
     setResultado("-");
