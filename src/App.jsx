@@ -227,29 +227,30 @@ function App() {
           </>
         )}
         {modoTodo && (
-          <div className="dado-multi">
-            {cartasTodo.length > 0
-              ? cartasTodo.map(({ tabla, num, res }) => (
-                  <div className="dado-card" key={tabla}>
-                    <div className="dc-label">{tabla}</div>
-                    <div className="dc-num">{num}</div>
-                    <div className="dc-res">{res}</div>
-                  </div>
-                ))
-              : TABLAS.map((t) => (
-                  <div className="dado-card placeholder" key={t}>
-                    <div className="dc-label">{t}</div>
-                    <div className="dc-num">-</div>
-                    <div className="dc-res"></div>
-                  </div>
-                ))}
-            <hr />
-            <div className="dado-card">
-              <div className="dc-label">Combate</div>
-              <div className="dc-num">{combate ? combate.num : "-"}</div>
-              <div className="dc-res">{combate ? combate.res : "-"}</div>
+          <>
+            <div className="dado-multi">
+              {cartasTodo.length > 0
+                ? cartasTodo.map(({ tabla, num, res }) => (
+                    <div className="dado-card" key={tabla}>
+                      <div className="dc-label">{tabla}</div>
+                      <div className="dc-num">{num}</div>
+                      <div className="dc-res">{res}</div>
+                    </div>
+                  ))
+                : TABLAS.map((t) => (
+                    <div className="dado-card placeholder" key={t}>
+                      <div className="dc-label">{t}</div>
+                      <div className="dc-num">-</div>
+                      <div className="dc-res"></div>
+                    </div>
+                  ))}
+              <div className="dado-card">
+                <div className="dc-label">Combate</div>
+                <div className="dc-num">{combate ? combate.num : "-"}</div>
+                <div className="dc-res">{combate ? combate.res : "-"}</div>
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
 

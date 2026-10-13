@@ -57,7 +57,7 @@ body {
 
 .dado-multi {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 0.75rem;
   margin-top: 0.75rem;
   width: 100%;
