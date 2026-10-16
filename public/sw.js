@@ -17,15 +17,24 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
+  const url = new URL(e.request.url);
+  if (url.origin !== location.origin) return;
+
+  // Online-first: la red manda; la caché es respaldo (incluso offline).
+  // Las navegaciones evitan la caché HTTP para no servir un HTML viejo.
+  const fromNetwork = fetch(e.request, {
+    cache: e.request.mode === "navigate" ? "no-cache" : "default",
+  }).then((res) => {
+    if (res.ok) {
+      const clone = res.clone();
+      caches.open(CACHE_NAME).then((c) => c.put(e.request, clone));
+    }
+    return res;
+  });
+
   e.respondWith(
-    fetch(e.request)
-      .then((res) => {
-        if (res.ok && new URL(e.request.url).origin === location.origin) {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((c) => c.put(e.request, clone));
-        }
-        return res;
-      })
-      .catch(() => caches.match(e.request)),
+    fromNetwork.catch(() =>
+      caches.match(e.request).then((cached) => cached || caches.match("/index.html")),
+    ),
   );
 });

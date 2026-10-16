@@ -49,6 +49,37 @@ const ITEMS = {
   pergamino: "📜",
 };
 
+const KITS = [
+  {
+    id: "clasico",
+    nombre: "Clásico",
+    icono: "🛡️",
+    desc: "Equilibrado",
+    items: ["pocion", "reparador", "bomba", null],
+  },
+  {
+    id: "guerrero",
+    nombre: "Guerrero",
+    icono: "⚔️",
+    desc: "Tanque",
+    items: ["reparador", "reparador", "pocion", null],
+  },
+  {
+    id: "explorador",
+    nombre: "Explorador",
+    icono: "🦶",
+    desc: "Evasivo",
+    items: ["bomba", "bomba", "pocion", null],
+  },
+  {
+    id: "alquimista",
+    nombre: "Alquimista",
+    icono: "🧪",
+    desc: "Supervivencia",
+    items: ["pocion", "pocion", "reparador", null],
+  },
+];
+
 function rollD6() {
   return Math.ceil(Math.random() * 6);
 }
@@ -86,6 +117,27 @@ function useRolling() {
   return { rolling, start, stop };
 }
 
+function useLocalStorage(key, initial) {
+  const [value, setValue] = useState(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw !== null ? JSON.parse(raw) : initial;
+    } catch {
+      return initial;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      // almacenamiento no disponible
+    }
+  }, [key, value]);
+
+  return [value, setValue];
+}
+
 function App() {
   const { trigger, isSupported } = useWebHaptics({
     debug: true,
@@ -94,25 +146,37 @@ function App() {
     console.log({ isSupported });
   }, []);
 
-  const [modoTodo, setModoTodo] = useState(false);
+  const [modoTodo, setModoTodo] = useLocalStorage("bujo:modoTodo", false);
   const [configOpen, setConfigOpen] = useState(false);
   const [reglasOpen, setReglasOpen] = useState(false);
+  const [kitOpen, setKitOpen] = useState(false);
 
-  const [etiqueta, setEtiqueta] = useState("Tira un dado");
-  const [dado, setDado] = useState("-");
-  const [resultado, setResultado] = useState("-");
-  const [cartasTodo, setCartasTodo] = useState([]);
-  const [combate, setCombate] = useState(null);
-  const [cofreAbierto, setCofreAbierto] = useState(false);
-  const [salas, setSalas] = useState(0);
+  const [etiqueta, setEtiqueta] = useLocalStorage(
+    "bujo:etiqueta",
+    "Tira un dado",
+  );
+  const [dado, setDado] = useLocalStorage("bujo:dado", "-");
+  const [resultado, setResultado] = useLocalStorage("bujo:resultado", "-");
+  const [cartasTodo, setCartasTodo] = useLocalStorage("bujo:cartasTodo", []);
+  const [combate, setCombate] = useLocalStorage("bujo:combate", null);
+  const [cofreAbierto, setCofreAbierto] = useLocalStorage(
+    "bujo:cofreAbierto",
+    false,
+  );
+  const [salas, setSalas] = useLocalStorage("bujo:salas", 0);
 
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useLocalStorage("bujo:stats", {
     hp: 10,
     fuerza: 3,
     escudo: 3,
     mochila: 4,
   });
-  const [inventario, setInventario] = useState([null, null, null, null]);
+  const [inventario, setInventario] = useLocalStorage("bujo:inventario", [
+    null,
+    null,
+    null,
+    null,
+  ]);
   const [slotSeleccionado, setSlotSeleccionado] = useState(-1);
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -135,6 +199,20 @@ function App() {
   };
 
   const cambiarSalas = (delta) => setSalas((n) => Math.max(0, n + delta));
+
+  const iniciarPartida = (kit) => {
+    setStats({ hp: 10, fuerza: 3, escudo: 3, mochila: 4 });
+    setInventario([...kit.items]);
+    setSalas(0);
+    setCartasTodo([]);
+    setCombate(null);
+    setCofreAbierto(false);
+    setEtiqueta("Nueva partida");
+    setDado("-");
+    setResultado("-");
+    setKitOpen(false);
+    trigger("success");
+  };
 
   const tirar = (tabla) => {
     if (rolling) return;
@@ -237,7 +315,7 @@ function App() {
   };
 
   return (
-    <>
+    <div className="app-shell">
       <div className="pantalla">
         <div className="etiqueta">{etiqueta}</div>
         {!modoTodo && (
@@ -260,7 +338,10 @@ function App() {
                       </div>
                     ))
                 : TABLAS.map((t) => (
-                    <div className="dado-card placeholder" key={t}>
+                    <div
+                      className={`dado-card placeholder ${t === "contenido" ? "wide" : ""}`}
+                      key={t}
+                    >
                       <div className="dc-label">{t}</div>
                       <div className="dc-num">-</div>
                       <div className="dc-res"></div>
@@ -492,6 +573,53 @@ function App() {
                   {isSupported ? "Compatible" : "No compatible"}
                 </span>
               </div>
+              <button
+                className="action-btn nueva-partida-btn"
+                onClick={() => {
+                  setConfigOpen(false);
+                  setKitOpen(true);
+                }}
+              >
+                Nueva Partida
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {kitOpen && (
+        <div className="modal-backdrop" onClick={() => setKitOpen(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Nueva Partida</h2>
+              <button
+                className="modal-close"
+                onClick={() => setKitOpen(false)}
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="kit-intro">Elige tu kit de inicio:</p>
+              <div className="kit-grid">
+                {KITS.map((kit) => (
+                  <button
+                    key={kit.id}
+                    className="kit-card"
+                    onClick={() => iniciarPartida(kit)}
+                  >
+                    <span className="kit-icono">{kit.icono}</span>
+                    <span className="kit-nombre">{kit.nombre}</span>
+                    <span className="kit-desc">{kit.desc}</span>
+                    <span className="kit-items">
+                      {kit.items
+                        .map((it, i) => (it ? ITEMS[it] : "·"))
+                        .join(" ")}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -533,7 +661,7 @@ function App() {
           </button>
         ))}
       </div>
-    </>
+    </div>
   );
 }
 
