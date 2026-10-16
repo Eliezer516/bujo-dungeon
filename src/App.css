@@ -491,6 +491,34 @@ body {
   transform: translateX(22px);
 }
 
+.config-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0 0;
+  margin-top: 12px;
+  border-top: 1px solid #eee;
+  font-size: 0.95rem;
+  color: #555;
+}
+
+.config-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.config-badge.ok {
+  background: #e6f5e6;
+  color: #2a7a2a;
+}
+
+.config-badge.no {
+  background: #f5e6e6;
+  color: #a22;
+}
+
 .backdrop {
   position: fixed;
   top: 0;

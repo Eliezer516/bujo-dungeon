@@ -486,8 +486,12 @@ function App() {
                 />
                 <span className="slider" />
               </label>
-              Retroalimentación háptica:{" "}
-              <b>{isSupported === true ? "Compatible" : "No compatible"}</b>
+              <div className="config-info">
+                <span>Retroalimentación háptica</span>
+                <span className={`config-badge ${isSupported ? "ok" : "no"}`}>
+                  {isSupported ? "Compatible" : "No compatible"}
+                </span>
+              </div>
             </div>
           </div>
         </div>
