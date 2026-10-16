@@ -138,10 +138,6 @@ body {
   border-radius: 8px;
 }
 
-.salas-row {
-  grid-column: 1 / -1;
-}
-
 .stat-label {
   font-size: 0.75rem;
   font-weight: 600;
@@ -214,6 +210,193 @@ body {
 .slot.filled {
   background: #fff;
   border: 2px solid #222;
+}
+
+.combate-panel {
+  background: #e5e5e5;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.combate-panel.activo {
+  background: #efe9e0;
+  border-top: 2px solid #c9a86a;
+  border-bottom: 2px solid #c9a86a;
+}
+
+.combate-header {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #666;
+  text-align: center;
+}
+
+.combate-config {
+  display: flex;
+  gap: 8px;
+}
+
+.combate-field {
+  flex: 1;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.combate-field-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #666;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stepper button {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: #222;
+  color: #fff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+}
+
+.stepper button:disabled {
+  background: #aaa;
+  cursor: not-allowed;
+}
+
+.stepper span {
+  font-weight: bold;
+  min-width: 18px;
+  text-align: center;
+}
+
+.combate-turnos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.turno {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: #fff;
+  color: #888;
+  border: 1px solid #ddd;
+}
+
+.turno.heroe {
+  background: #dcefdc;
+  color: #2a7a2a;
+  border-color: #b7d9b7;
+}
+
+.turno.enemigo {
+  background: #f3dcdc;
+  color: #a23;
+  border-color: #e0bcbc;
+}
+
+.turno.actual {
+  outline: 2px solid #222;
+  color: #222;
+}
+
+.combate-ahora {
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #444;
+}
+
+.combate-enemigos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.enemigo {
+  background: #fff;
+  border-radius: 8px;
+  padding: 5px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.enemigo.muerto {
+  opacity: 0.45;
+}
+
+.enemigo-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.enemigo-hp {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #444;
+}
+
+.enemigo-ctrl {
+  display: flex;
+  gap: 4px;
+}
+
+.enemigo-ctrl button {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 5px;
+  background: #ddd;
+  color: #222;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+}
+
+.combate-ultimo {
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #222;
+}
+
+.combate-dado {
+  color: #888;
+  font-weight: 400;
+}
+
+.combate-panel .action-btn.secundario {
+  background: #fff;
+  color: #222;
+  border: 1px solid #bbb;
 }
 
 .controles {

@@ -163,8 +163,6 @@ function App() {
     "bujo:cofreAbierto",
     false,
   );
-  const [salas, setSalas] = useLocalStorage("bujo:salas", 0);
-
   const [stats, setStats] = useLocalStorage("bujo:stats", {
     hp: 10,
     fuerza: 3,
@@ -179,6 +177,7 @@ function App() {
   ]);
   const [slotSeleccionado, setSlotSeleccionado] = useState(-1);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [nuevoCombate, setNuevoCombate] = useState({ enemigos: 1, hp: 1 });
 
   const { rolling, start } = useRolling();
 
@@ -198,12 +197,9 @@ function App() {
     });
   };
 
-  const cambiarSalas = (delta) => setSalas((n) => Math.max(0, n + delta));
-
   const iniciarPartida = (kit) => {
     setStats({ hp: 10, fuerza: 3, escudo: 3, mochila: 4 });
     setInventario([...kit.items]);
-    setSalas(0);
     setCartasTodo([]);
     setCombate(null);
     setCofreAbierto(false);
@@ -214,31 +210,114 @@ function App() {
     trigger("success");
   };
 
-  const tirar = (tabla) => {
+  const numEnemigosDe = (res) => parseInt(res, 10) || 1;
+
+  const iniciarCombate = (n, hp) => {
+    const enemigos = Math.max(1, Math.min(6, n));
+    const vida = Math.max(1, hp);
+    setCombate({
+      enemigos,
+      hp: Array(enemigos).fill(vida),
+      hpMax: Array(enemigos).fill(vida),
+      turno: 0,
+      ronda: 1,
+      escudo: true,
+      ultimo: null,
+    });
+    trigger("success");
+  };
+
+  const terminarCombate = () => {
+    setCombate(null);
+    setEtiqueta("Tira un dado");
+    setDado("-");
+    setResultado("-");
+  };
+
+  const resolverTurno = () => {
     if (rolling) return;
-    trigger("nudge");
-    if (!(modoTodo && tabla === "batalla")) setCartasTodo([]);
+    if (!combate) {
+      iniciarCombate(nuevoCombate.enemigos, nuevoCombate.hp);
+      return;
+    }
+    const N = combate.enemigos;
+    const esJugador = combate.turno < N;
+    const idx = combate.turno - N;
     const finalR = rollD6();
+    const golpea = finalR >= 4;
+    const dmgJugador = 1 + (stats.fuerza - 3);
+    const dmgAJugador = !esJugador && golpea && !combate.escudo ? 1 : 0;
+
+    trigger("nudge");
     start(
-      () => {
-        setDado(rollD6());
-        if (modoTodo && tabla === "batalla") {
-          const r = rollD6();
-          const res = r >= 4 ? "Acierto" : "Fallo";
-          setCombate({ num: r, res });
-        }
-      },
+      () => setDado(rollD6()),
       () => {
         setDado(finalR);
-        if (tabla === "batalla") {
-          const res = finalR >= 4 ? "Acierto" : "Fallo";
-          setEtiqueta(modoTodo ? res : ETIQUETAS[tabla]);
-          setResultado(res);
-          if (modoTodo) setCombate({ num: finalR, res });
-        } else {
-          setEtiqueta(ETIQUETAS[tabla]);
-          setResultado(RESULTADOS[tabla](finalR));
-        }
+        setCombate((prev) => {
+          if (!prev) return prev;
+          const next = { ...prev, hp: [...prev.hp] };
+          if (esJugador) {
+            if (golpea) {
+              const i = next.hp.findIndex((h) => h > 0);
+              if (i !== -1) next.hp[i] = Math.max(0, next.hp[i] - dmgJugador);
+              next.ultimo = {
+                lado: "heroe",
+                num: finalR,
+                res: `Acierto (-${dmgJugador})`,
+              };
+            } else {
+              next.ultimo = { lado: "heroe", num: finalR, res: "Fallo" };
+            }
+          } else if (golpea && next.escudo) {
+            next.escudo = false;
+            next.ultimo = {
+              lado: "enemigo",
+              idx,
+              num: finalR,
+              res: "Bloqueado (escudo)",
+            };
+          } else if (golpea) {
+            next.ultimo = {
+              lado: "enemigo",
+              idx,
+              num: finalR,
+              res: "Golpe (-1 HP)",
+            };
+          } else {
+            next.ultimo = { lado: "enemigo", idx, num: finalR, res: "Fallo" };
+          }
+          next.turno += 1;
+          if (next.turno >= N * 2) {
+            next.turno = 0;
+            next.ronda += 1;
+          }
+          return next;
+        });
+        if (dmgAJugador) updateStat("hp", -dmgAJugador);
+      },
+    );
+  };
+
+  const tirar = (tabla) => {
+    if (tabla === "batalla") {
+      resolverTurno();
+      return;
+    }
+    if (rolling) return;
+    trigger("nudge");
+    setCartasTodo([]);
+    const finalR = rollD6();
+    start(
+      () => setDado(rollD6()),
+      () => {
+        setDado(finalR);
+        setEtiqueta(ETIQUETAS[tabla]);
+        setResultado(RESULTADOS[tabla](finalR));
+        if (tabla === "enemigos")
+          setNuevoCombate((prev) => ({
+            ...prev,
+            enemigos: numEnemigosDe(RESULTADOS.enemigos(finalR)),
+          }));
       },
     );
   };
@@ -256,6 +335,8 @@ function App() {
     TABLAS.forEach((t) => (resultados[t] = rollD6()));
 
     const hayCofre = resultados["cofre"] > 3;
+    const nEnemigos = numEnemigosDe(RESULTADOS.enemigos(resultados.enemigos));
+    setNuevoCombate((prev) => ({ ...prev, enemigos: nEnemigos }));
 
     start(
       () => {
@@ -264,7 +345,7 @@ function App() {
           TABLAS.map((t) => {
             const r = rollD6();
             return { tabla: t, num: r, res: RESULTADOS[t](r) };
-          }).filter(({ tabla }) => tabla !== "contenido" || hayCofre),
+          }).filter(({ tabla }) => tabla !== "contenido"),
         );
       },
       () => {
@@ -314,6 +395,20 @@ function App() {
     setSlotSeleccionado(-1);
   };
 
+  const totalTurnos = combate ? combate.enemigos * 2 : 0;
+  const turnoActual = combate ? combate.turno : 0;
+  const esTurnoJugador = combate ? turnoActual < combate.enemigos : true;
+  const enemigosVivos = combate
+    ? combate.hp.filter((h) => h > 0).length
+    : 0;
+  const secuenciaTurnos = [];
+  if (combate) {
+    for (let i = 0; i < combate.enemigos; i++)
+      secuenciaTurnos.push({ tipo: "heroe", label: "Tú" });
+    for (let i = 0; i < combate.enemigos; i++)
+      secuenciaTurnos.push({ tipo: "enemigo", label: `E${i + 1}`, idx: i });
+  }
+
   return (
     <div className="app-shell">
       <div className="pantalla">
@@ -347,11 +442,6 @@ function App() {
                       <div className="dc-res"></div>
                     </div>
                   ))}
-              <div className="dado-card wide">
-                <div className="dc-label">Combate</div>
-                <div className="dc-num">{combate ? combate.num : "-"}</div>
-                <div className="dc-res">{combate ? combate.res : "-"}</div>
-              </div>
             </div>
             {cartasTodo.some((c) => c.tabla === "contenido") && (
               <div className="cofre-zone">
@@ -389,20 +479,6 @@ function App() {
       </div>
 
       <div className="stats-panel">
-        <div className="stat-row salas-row">
-          <span className="stat-label">SALAS</span>
-          <button
-            className="stat-btn minus"
-            onClick={() => cambiarSalas(-1)}
-            disabled={salas <= 0}
-          >
-            -
-          </button>
-          <span className="stat-value">{salas}</span>
-          <button className="stat-btn plus" onClick={() => cambiarSalas(1)}>
-            +
-          </button>
-        </div>
         {Object.entries(stats).map(([stat, val]) => (
           <div className="stat-row" key={stat}>
             <span className="stat-label">
@@ -442,6 +518,157 @@ function App() {
             {item ? ITEMS[item] : ""}
           </div>
         ))}
+      </div>
+
+      <div className={`combate-panel${combate ? " activo" : ""}`}>
+        {combate ? (
+          <>
+            <div className="combate-header">
+              Combate · Ronda {combate.ronda}
+            </div>
+            <div className="combate-turnos">
+              {secuenciaTurnos.map((s, i) => (
+                <span
+                  key={i}
+                  className={`turno ${s.tipo}${i === turnoActual ? " actual" : ""}`}
+                >
+                  {s.label}
+                </span>
+              ))}
+            </div>
+            <div className="combate-ahora">
+              {enemigosVivos === 0
+                ? "¡Combate ganado!"
+                : esTurnoJugador
+                  ? "Tu turno"
+                  : `Turno del enemigo ${turnoActual - combate.enemigos + 1}`}
+            </div>
+            <div className="combate-enemigos">
+              {combate.hp.map((h, i) => (
+                <div key={i} className={`enemigo${h <= 0 ? " muerto" : ""}`}>
+                  <span className="enemigo-label">E{i + 1}</span>
+                  <span className="enemigo-hp">
+                    {h <= 0 ? "💀" : `${h}/${combate.hpMax[i]}`}
+                  </span>
+                  {h > 0 && (
+                    <span className="enemigo-ctrl">
+                      <button
+                        onClick={() =>
+                          setCombate((p) => ({
+                            ...p,
+                            hp: p.hp.map((v, j) =>
+                              j === i ? Math.max(0, v - 1) : v,
+                            ),
+                          }))
+                        }
+                      >
+                        -
+                      </button>
+                      <button
+                        onClick={() =>
+                          setCombate((p) => ({
+                            ...p,
+                            hp: p.hp.map((v, j) =>
+                              j === i ? Math.min(p.hpMax[i], v + 1) : v,
+                            ),
+                          }))
+                        }
+                      >
+                        +
+                      </button>
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+            {combate.ultimo && (
+              <div className="combate-ultimo">
+                {combate.ultimo.res}
+                <span className="combate-dado">({combate.ultimo.num})</span>
+              </div>
+            )}
+            {enemigosVivos > 0 && (
+              <button
+                className="action-btn"
+                onClick={resolverTurno}
+                disabled={rolling}
+              >
+                Resolver turno
+              </button>
+            )}
+            <button className="action-btn secundario" onClick={terminarCombate}>
+              Terminar combate
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="combate-header">Combate</div>
+            <div className="combate-config">
+              <div className="combate-field">
+                <span className="combate-field-label">Enemigos</span>
+                <span className="stepper">
+                  <button
+                    onClick={() =>
+                      setNuevoCombate((p) => ({
+                        ...p,
+                        enemigos: Math.max(1, p.enemigos - 1),
+                      }))
+                    }
+                    disabled={nuevoCombate.enemigos <= 1}
+                  >
+                    -
+                  </button>
+                  <span>{nuevoCombate.enemigos}</span>
+                  <button
+                    onClick={() =>
+                      setNuevoCombate((p) => ({
+                        ...p,
+                        enemigos: Math.min(6, p.enemigos + 1),
+                      }))
+                    }
+                  >
+                    +
+                  </button>
+                </span>
+              </div>
+              <div className="combate-field">
+                <span className="combate-field-label">HP por enemigo</span>
+                <span className="stepper">
+                  <button
+                    onClick={() =>
+                      setNuevoCombate((p) => ({
+                        ...p,
+                        hp: Math.max(1, p.hp - 1),
+                      }))
+                    }
+                    disabled={nuevoCombate.hp <= 1}
+                  >
+                    -
+                  </button>
+                  <span>{nuevoCombate.hp}</span>
+                  <button
+                    onClick={() =>
+                      setNuevoCombate((p) => ({
+                        ...p,
+                        hp: Math.min(9, p.hp + 1),
+                      }))
+                    }
+                  >
+                    +
+                  </button>
+                </span>
+              </div>
+            </div>
+            <button
+              className="action-btn"
+              onClick={() =>
+                iniciarCombate(nuevoCombate.enemigos, nuevoCombate.hp)
+              }
+            >
+              Empezar combate
+            </button>
+          </>
+        )}
       </div>
 
       <div className={`controles${modoTodo ? " controles-todo" : ""}`}>
