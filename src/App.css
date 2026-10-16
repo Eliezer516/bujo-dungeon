@@ -118,6 +118,10 @@ body {
   border-radius: 8px;
 }
 
+.salas-row {
+  grid-column: 1 / -1;
+}
+
 .stat-label {
   font-size: 0.75rem;
   font-weight: 600;
@@ -200,6 +204,10 @@ body {
   background: #e5e5e5;
 }
 
+.controles.controles-todo {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .action-btn {
   font-size: 0.95rem;
   padding: 0.8rem 0;
@@ -225,22 +233,25 @@ body {
 
 .todo-btn {
   background: #222222;
-  grid-column: 1 / -1;
 }
 
 .cofre-zone {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
   margin-top: 0.75rem;
   width: 100%;
   max-width: 320px;
 }
 
-.cofre-btn {
+.cofre-zone .dado-card {
+  grid-column: 1 / -1;
   width: 100%;
-  max-width: 320px;
+}
+
+.cofre-btn {
+  grid-column: 1 / -1;
+  width: 100%;
 }
 
 .config-btn {

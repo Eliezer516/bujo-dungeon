@@ -87,7 +87,12 @@ function useRolling() {
 }
 
 function App() {
-  const { trigger } = useWebHaptics();
+  const { trigger, isSupported } = useWebHaptics({
+    debug: true,
+  });
+  useEffect(() => {
+    console.log({ isSupported });
+  }, []);
 
   const [modoTodo, setModoTodo] = useState(false);
   const [configOpen, setConfigOpen] = useState(false);
@@ -99,6 +104,7 @@ function App() {
   const [cartasTodo, setCartasTodo] = useState([]);
   const [combate, setCombate] = useState(null);
   const [cofreAbierto, setCofreAbierto] = useState(false);
+  const [salas, setSalas] = useState(0);
 
   const [stats, setStats] = useState({
     hp: 10,
@@ -128,9 +134,11 @@ function App() {
     });
   };
 
+  const cambiarSalas = (delta) => setSalas((n) => Math.max(0, n + delta));
+
   const tirar = (tabla) => {
     if (rolling) return;
-    trigger([{ duration: 25 }], { intensity: 0.7 });
+    trigger("nudge");
     if (!(modoTodo && tabla === "batalla")) setCartasTodo([]);
     const finalR = rollD6();
     start(
@@ -159,7 +167,7 @@ function App() {
 
   const tirarTodo = () => {
     if (rolling) return;
-    trigger([{ duration: 25 }], { intensity: 0.7 });
+    trigger("nudge");
     setEtiqueta("Tira un dado");
     setDado("-");
     setResultado("-");
@@ -178,9 +186,7 @@ function App() {
           TABLAS.map((t) => {
             const r = rollD6();
             return { tabla: t, num: r, res: RESULTADOS[t](r) };
-          }).filter(
-            ({ tabla }) => tabla !== "contenido" || hayCofre,
-          ),
+          }).filter(({ tabla }) => tabla !== "contenido" || hayCofre),
         );
       },
       () => {
@@ -191,8 +197,12 @@ function App() {
           TABLAS.map((t) => ({
             tabla: t,
             num: resultados[t],
-            res: t === "contenido" && hayCofre ? "Cerrado" : RESULTADOS[t](resultados[t]),
-            contenidoReal: t === "contenido" ? RESULTADOS[t](resultados[t]) : undefined,
+            res:
+              t === "contenido" && hayCofre
+                ? "Cerrado"
+                : RESULTADOS[t](resultados[t]),
+            contenidoReal:
+              t === "contenido" ? RESULTADOS[t](resultados[t]) : undefined,
           })).filter(({ tabla }) => {
             if (tabla !== "contenido") return true;
             return hayCofre;
@@ -240,13 +250,15 @@ function App() {
           <>
             <div className="dado-multi">
               {cartasTodo.length > 0
-                ? cartasTodo.filter(({ tabla }) => tabla !== "contenido").map(({ tabla, num, res }) => (
-                    <div className="dado-card" key={tabla}>
-                      <div className="dc-label">{tabla}</div>
-                      <div className="dc-num">{num}</div>
-                      <div className="dc-res">{res}</div>
-                    </div>
-                  ))
+                ? cartasTodo
+                    .filter(({ tabla }) => tabla !== "contenido")
+                    .map(({ tabla, num, res }) => (
+                      <div className="dado-card" key={tabla}>
+                        <div className="dc-label">{tabla}</div>
+                        <div className="dc-num">{num}</div>
+                        <div className="dc-res">{res}</div>
+                      </div>
+                    ))
                 : TABLAS.map((t) => (
                     <div className="dado-card placeholder" key={t}>
                       <div className="dc-label">{t}</div>
@@ -264,10 +276,13 @@ function App() {
               <div className="cofre-zone">
                 <div className="dado-card wide">
                   <div className="dc-label">Contenido</div>
-                  <div className="dc-num">{cartasTodo.find((c) => c.tabla === "contenido").num}</div>
+                  <div className="dc-num">
+                    {cartasTodo.find((c) => c.tabla === "contenido").num}
+                  </div>
                   <div className="dc-res">
                     {cofreAbierto
-                      ? cartasTodo.find((c) => c.tabla === "contenido").contenidoReal
+                      ? cartasTodo.find((c) => c.tabla === "contenido")
+                          .contenidoReal
                       : "Cerrado"}
                   </div>
                 </div>
@@ -275,7 +290,10 @@ function App() {
                   <button
                     className="action-btn cofre-btn"
                     onClick={() => {
-                      trigger([{ duration: 25 }], { intensity: 0.5 });
+                      const esTrampa = cartasTodo
+                        .find((c) => c.tabla === "contenido")
+                        .contenidoReal.includes("Trampa");
+                      trigger(esTrampa ? "error" : "success");
                       setCofreAbierto(true);
                     }}
                     disabled={rolling}
@@ -290,6 +308,20 @@ function App() {
       </div>
 
       <div className="stats-panel">
+        <div className="stat-row salas-row">
+          <span className="stat-label">SALAS</span>
+          <button
+            className="stat-btn minus"
+            onClick={() => cambiarSalas(-1)}
+            disabled={salas <= 0}
+          >
+            -
+          </button>
+          <span className="stat-value">{salas}</span>
+          <button className="stat-btn plus" onClick={() => cambiarSalas(1)}>
+            +
+          </button>
+        </div>
         {Object.entries(stats).map(([stat, val]) => (
           <div className="stat-row" key={stat}>
             <span className="stat-label">
@@ -331,7 +363,7 @@ function App() {
         ))}
       </div>
 
-      <div className="controles">
+      <div className={`controles${modoTodo ? " controles-todo" : ""}`}>
         {!modoTodo && (
           <>
             <button
@@ -381,14 +413,14 @@ function App() {
         {modoTodo && (
           <>
             <button
-              className="action-btn todo-btn"
+              className="action-btn"
               onClick={tirarTodo}
               disabled={rolling}
             >
               Tirar Todo
             </button>
             <button
-              className="action-btn todo-btn"
+              className="action-btn"
               onClick={() => tirar("batalla")}
               disabled={rolling}
             >
@@ -454,6 +486,8 @@ function App() {
                 />
                 <span className="slider" />
               </label>
+              Retroalimentación háptica:{" "}
+              <b>{isSupported === true ? "Compatible" : "No compatible"}</b>
             </div>
           </div>
         </div>
