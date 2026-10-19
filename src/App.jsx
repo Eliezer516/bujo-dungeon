@@ -178,8 +178,11 @@ function App() {
   const [slotSeleccionado, setSlotSeleccionado] = useState(-1);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [nuevoCombate, setNuevoCombate] = useState({ enemigos: 1, hp: 1 });
+  const [combateModalOpen, setCombateModalOpen] = useState(false);
+  const [combateDado, setCombateDado] = useState("-");
 
   const { rolling, start } = useRolling();
+  const combateRoll = useRolling();
 
   const ajustarInventario = useCallback((mochila) => {
     setInventario((prev) => {
@@ -234,8 +237,15 @@ function App() {
     setResultado("-");
   };
 
+  const abrirCombate = () => {
+    if (!combate && !modoTodo) {
+      iniciarCombate(nuevoCombate.enemigos, nuevoCombate.hp);
+    }
+    setCombateModalOpen(true);
+  };
+
   const resolverTurno = () => {
-    if (rolling) return;
+    if (combateRoll.rolling) return;
     if (!combate) {
       iniciarCombate(nuevoCombate.enemigos, nuevoCombate.hp);
       return;
@@ -249,10 +259,10 @@ function App() {
     const dmgAJugador = !esJugador && golpea && !combate.escudo ? 1 : 0;
 
     trigger("nudge");
-    start(
-      () => setDado(rollD6()),
+    combateRoll.start(
+      () => setCombateDado(rollD6()),
       () => {
-        setDado(finalR);
+        setCombateDado(finalR);
         setCombate((prev) => {
           if (!prev) return prev;
           const next = { ...prev, hp: [...prev.hp] };
@@ -300,7 +310,7 @@ function App() {
 
   const tirar = (tabla) => {
     if (tabla === "batalla") {
-      resolverTurno();
+      abrirCombate();
       return;
     }
     if (rolling) return;
@@ -520,157 +530,6 @@ function App() {
         ))}
       </div>
 
-      <div className={`combate-panel${combate ? " activo" : ""}`}>
-        {combate ? (
-          <>
-            <div className="combate-header">
-              Combate · Ronda {combate.ronda}
-            </div>
-            <div className="combate-turnos">
-              {secuenciaTurnos.map((s, i) => (
-                <span
-                  key={i}
-                  className={`turno ${s.tipo}${i === turnoActual ? " actual" : ""}`}
-                >
-                  {s.label}
-                </span>
-              ))}
-            </div>
-            <div className="combate-ahora">
-              {enemigosVivos === 0
-                ? "¡Combate ganado!"
-                : esTurnoJugador
-                  ? "Tu turno"
-                  : `Turno del enemigo ${turnoActual - combate.enemigos + 1}`}
-            </div>
-            <div className="combate-enemigos">
-              {combate.hp.map((h, i) => (
-                <div key={i} className={`enemigo${h <= 0 ? " muerto" : ""}`}>
-                  <span className="enemigo-label">E{i + 1}</span>
-                  <span className="enemigo-hp">
-                    {h <= 0 ? "💀" : `${h}/${combate.hpMax[i]}`}
-                  </span>
-                  {h > 0 && (
-                    <span className="enemigo-ctrl">
-                      <button
-                        onClick={() =>
-                          setCombate((p) => ({
-                            ...p,
-                            hp: p.hp.map((v, j) =>
-                              j === i ? Math.max(0, v - 1) : v,
-                            ),
-                          }))
-                        }
-                      >
-                        -
-                      </button>
-                      <button
-                        onClick={() =>
-                          setCombate((p) => ({
-                            ...p,
-                            hp: p.hp.map((v, j) =>
-                              j === i ? Math.min(p.hpMax[i], v + 1) : v,
-                            ),
-                          }))
-                        }
-                      >
-                        +
-                      </button>
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-            {combate.ultimo && (
-              <div className="combate-ultimo">
-                {combate.ultimo.res}
-                <span className="combate-dado">({combate.ultimo.num})</span>
-              </div>
-            )}
-            {enemigosVivos > 0 && (
-              <button
-                className="action-btn"
-                onClick={resolverTurno}
-                disabled={rolling}
-              >
-                Resolver turno
-              </button>
-            )}
-            <button className="action-btn secundario" onClick={terminarCombate}>
-              Terminar combate
-            </button>
-          </>
-        ) : (
-          <>
-            <div className="combate-header">Combate</div>
-            <div className="combate-config">
-              <div className="combate-field">
-                <span className="combate-field-label">Enemigos</span>
-                <span className="stepper">
-                  <button
-                    onClick={() =>
-                      setNuevoCombate((p) => ({
-                        ...p,
-                        enemigos: Math.max(1, p.enemigos - 1),
-                      }))
-                    }
-                    disabled={nuevoCombate.enemigos <= 1}
-                  >
-                    -
-                  </button>
-                  <span>{nuevoCombate.enemigos}</span>
-                  <button
-                    onClick={() =>
-                      setNuevoCombate((p) => ({
-                        ...p,
-                        enemigos: Math.min(6, p.enemigos + 1),
-                      }))
-                    }
-                  >
-                    +
-                  </button>
-                </span>
-              </div>
-              <div className="combate-field">
-                <span className="combate-field-label">HP por enemigo</span>
-                <span className="stepper">
-                  <button
-                    onClick={() =>
-                      setNuevoCombate((p) => ({
-                        ...p,
-                        hp: Math.max(1, p.hp - 1),
-                      }))
-                    }
-                    disabled={nuevoCombate.hp <= 1}
-                  >
-                    -
-                  </button>
-                  <span>{nuevoCombate.hp}</span>
-                  <button
-                    onClick={() =>
-                      setNuevoCombate((p) => ({
-                        ...p,
-                        hp: Math.min(9, p.hp + 1),
-                      }))
-                    }
-                  >
-                    +
-                  </button>
-                </span>
-              </div>
-            </div>
-            <button
-              className="action-btn"
-              onClick={() =>
-                iniciarCombate(nuevoCombate.enemigos, nuevoCombate.hp)
-              }
-            >
-              Empezar combate
-            </button>
-          </>
-        )}
-      </div>
-
       <div className={`controles${modoTodo ? " controles-todo" : ""}`}>
         {!modoTodo && (
           <>
@@ -869,6 +728,192 @@ function App() {
               className="modal-body reglas-body"
               dangerouslySetInnerHTML={{ __html: md.render(reglas) }}
             />
+          </div>
+        </div>
+      )}
+
+      {combateModalOpen && (
+        <div className="modal-backdrop" onClick={() => setCombateModalOpen(false)}>
+          <div
+            className="modal-content combate-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h2>Combate</h2>
+              <button
+                className="modal-close"
+                onClick={() => setCombateModalOpen(false)}
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className={`combate-die ${combateRoll.rolling ? "rolling" : ""}`}>
+                {combateDado}
+              </p>
+              {combate ? (
+                <>
+                  <div className="combate-header">
+                    Combate · Ronda {combate.ronda}
+                  </div>
+                  <div className="combate-turnos">
+                    {secuenciaTurnos.map((s, i) => (
+                      <span
+                        key={i}
+                        className={`turno ${s.tipo}${i === turnoActual ? " actual" : ""}`}
+                      >
+                        {s.label}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="combate-ahora">
+                    {enemigosVivos === 0
+                      ? "¡Combate ganado!"
+                      : esTurnoJugador
+                        ? "Tu turno"
+                        : `Turno del enemigo ${turnoActual - combate.enemigos + 1}`}
+                  </div>
+                  <div className="combate-enemigos">
+                    {combate.hp.map((h, i) => (
+                      <div
+                        key={i}
+                        className={`enemigo${h <= 0 ? " muerto" : ""}`}
+                      >
+                        <span className="enemigo-label">E{i + 1}</span>
+                        <span className="enemigo-hp">
+                          {h <= 0 ? "💀" : `${h}/${combate.hpMax[i]}`}
+                        </span>
+                        {h > 0 && (
+                          <span className="enemigo-ctrl">
+                            <button
+                              onClick={() =>
+                                setCombate((p) => ({
+                                  ...p,
+                                  hp: p.hp.map((v, j) =>
+                                    j === i ? Math.max(0, v - 1) : v,
+                                  ),
+                                }))
+                              }
+                            >
+                              -
+                            </button>
+                            <button
+                              onClick={() =>
+                                setCombate((p) => ({
+                                  ...p,
+                                  hp: p.hp.map((v, j) =>
+                                    j === i ? Math.min(p.hpMax[i], v + 1) : v,
+                                  ),
+                                }))
+                              }
+                            >
+                              +
+                            </button>
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {combate.ultimo && (
+                    <div className="combate-ultimo">
+                      {combate.ultimo.res}
+                      <span className="combate-dado">
+                        ({combate.ultimo.num})
+                      </span>
+                    </div>
+                  )}
+                  {enemigosVivos > 0 && (
+                    <button
+                      className="action-btn"
+                      onClick={resolverTurno}
+                      disabled={combateRoll.rolling}
+                    >
+                      Resolver turno
+                    </button>
+                  )}
+                  <button
+                    className="action-btn secundario"
+                    onClick={() => {
+                      terminarCombate();
+                      setCombateModalOpen(false);
+                    }}
+                  >
+                    Terminar combate
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="combate-header">Combate</div>
+                  <div className="combate-config">
+                    <div className="combate-field">
+                      <span className="combate-field-label">Enemigos</span>
+                      <span className="stepper">
+                        <button
+                          onClick={() =>
+                            setNuevoCombate((p) => ({
+                              ...p,
+                              enemigos: Math.max(1, p.enemigos - 1),
+                            }))
+                          }
+                          disabled={nuevoCombate.enemigos <= 1}
+                        >
+                          -
+                        </button>
+                        <span>{nuevoCombate.enemigos}</span>
+                        <button
+                          onClick={() =>
+                            setNuevoCombate((p) => ({
+                              ...p,
+                              enemigos: Math.min(6, p.enemigos + 1),
+                            }))
+                          }
+                        >
+                          +
+                        </button>
+                      </span>
+                    </div>
+                    <div className="combate-field">
+                      <span className="combate-field-label">HP por enemigo</span>
+                      <span className="stepper">
+                        <button
+                          onClick={() =>
+                            setNuevoCombate((p) => ({
+                              ...p,
+                              hp: Math.max(1, p.hp - 1),
+                            }))
+                          }
+                          disabled={nuevoCombate.hp <= 1}
+                        >
+                          -
+                        </button>
+                        <span>{nuevoCombate.hp}</span>
+                        <button
+                          onClick={() =>
+                            setNuevoCombate((p) => ({
+                              ...p,
+                              hp: Math.min(9, p.hp + 1),
+                            }))
+                          }
+                        >
+                          +
+                        </button>
+                      </span>
+                    </div>
+                  </div>
+                  {modoTodo && (
+                    <button
+                      className="action-btn"
+                      onClick={() =>
+                        iniciarCombate(nuevoCombate.enemigos, nuevoCombate.hp)
+                      }
+                    >
+                      Empezar combate
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
