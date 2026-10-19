@@ -80,6 +80,28 @@ const KITS = [
   },
 ];
 
+const TIPOS_ENEMIGO = {
+  bicho: { nombre: "Bicho", icono: "🐛", hp: 1 },
+  bruto: { nombre: "Bruto", icono: "🧟", hp: 2 },
+  demonio: { nombre: "Demonio", icono: "👹", hp: 3 },
+  jefe: { nombre: "Jefe Final", icono: "🐉", hp: 5 },
+};
+
+// Escalado según el número de sala recorrida (ver reglas.md).
+function escaladoDe(sala, d6) {
+  if (sala <= 5) return "bicho";
+  if (sala <= 15) return d6 <= 3 ? "bicho" : "bruto";
+  if (sala <= 25) return d6 <= 3 ? "bruto" : "demonio";
+  return "demonio";
+}
+
+function descripcionEscalado(sala) {
+  if (sala <= 5) return "Bicho 🐛 · 1 HP";
+  if (sala <= 15) return "d6: 1-3 Bicho 🐛 (1) / 4-6 Bruto 🧟 (2)";
+  if (sala <= 25) return "d6: 1-3 Bruto 🧟 (2) / 4-6 Demonio 👹 (3)";
+  return "Demonio 👹 · 3 HP";
+}
+
 function rollD6() {
   return Math.ceil(Math.random() * 6);
 }
@@ -163,6 +185,8 @@ function App() {
     "bujo:cofreAbierto",
     false,
   );
+  const [salas, setSalas] = useLocalStorage("bujo:salas", 0);
+
   const [stats, setStats] = useLocalStorage("bujo:stats", {
     hp: 10,
     fuerza: 3,
@@ -177,9 +201,10 @@ function App() {
   ]);
   const [slotSeleccionado, setSlotSeleccionado] = useState(-1);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [nuevoCombate, setNuevoCombate] = useState({ enemigos: 1, hp: 1 });
+  const [nuevoCombate, setNuevoCombate] = useState({ enemigos: 1 });
   const [combateModalOpen, setCombateModalOpen] = useState(false);
   const [combateDado, setCombateDado] = useState("-");
+  const [modoJefe, setModoJefe] = useLocalStorage("bujo:modoJefe", false);
 
   const { rolling, start } = useRolling();
   const combateRoll = useRolling();
@@ -203,6 +228,7 @@ function App() {
   const iniciarPartida = (kit) => {
     setStats({ hp: 10, fuerza: 3, escudo: 3, mochila: 4 });
     setInventario([...kit.items]);
+    setSalas(0);
     setCartasTodo([]);
     setCombate(null);
     setCofreAbierto(false);
@@ -215,23 +241,54 @@ function App() {
 
   const numEnemigosDe = (res) => parseInt(res, 10) || 1;
 
-  const iniciarCombate = (n, hp) => {
+  const iniciarCombate = (n, sala = salas) => {
     const enemigos = Math.max(1, Math.min(6, n));
-    const vida = Math.max(1, hp);
+    const tipos = [];
+    const hp = [];
+    const hpMax = [];
+    for (let i = 0; i < enemigos; i++) {
+      const tipo = escaladoDe(sala, rollD6());
+      tipos.push(tipo);
+      hp.push(TIPOS_ENEMIGO[tipo].hp);
+      hpMax.push(TIPOS_ENEMIGO[tipo].hp);
+    }
     setCombate({
       enemigos,
-      hp: Array(enemigos).fill(vida),
-      hpMax: Array(enemigos).fill(vida),
+      tipos,
+      hp,
+      hpMax,
       turno: 0,
       ronda: 1,
       escudo: true,
       ultimo: null,
+      esJefe: false,
     });
     trigger("success");
   };
 
+  const toggleJefe = (on) => {
+    setModoJefe(on);
+    if (on) {
+      setCombate({
+        enemigos: 1,
+        tipos: ["jefe"],
+        hp: [TIPOS_ENEMIGO.jefe.hp],
+        hpMax: [TIPOS_ENEMIGO.jefe.hp],
+        turno: 0,
+        ronda: 1,
+        escudo: true,
+        ultimo: null,
+        esJefe: true,
+      });
+      trigger("heavy");
+    } else {
+      terminarCombate();
+    }
+  };
+
   const terminarCombate = () => {
     setCombate(null);
+    setModoJefe(false);
     setEtiqueta("Tira un dado");
     setDado("-");
     setResultado("-");
@@ -239,7 +296,7 @@ function App() {
 
   const abrirCombate = () => {
     if (!combate && !modoTodo) {
-      iniciarCombate(nuevoCombate.enemigos, nuevoCombate.hp);
+      iniciarCombate(nuevoCombate.enemigos);
     }
     setCombateModalOpen(true);
   };
@@ -247,7 +304,7 @@ function App() {
   const resolverTurno = () => {
     if (combateRoll.rolling) return;
     if (!combate) {
-      iniciarCombate(nuevoCombate.enemigos, nuevoCombate.hp);
+      iniciarCombate(nuevoCombate.enemigos);
       return;
     }
     const N = combate.enemigos;
@@ -323,6 +380,7 @@ function App() {
         setDado(finalR);
         setEtiqueta(ETIQUETAS[tabla]);
         setResultado(RESULTADOS[tabla](finalR));
+        if (tabla === "sala") setSalas((n) => n + 1);
         if (tabla === "enemigos")
           setNuevoCombate((prev) => ({
             ...prev,
@@ -340,6 +398,7 @@ function App() {
     setResultado("-");
     setCombate(null);
     setCofreAbierto(false);
+    setSalas((n) => n + 1);
 
     const resultados = {};
     TABLAS.forEach((t) => (resultados[t] = rollD6()));
@@ -489,6 +548,10 @@ function App() {
       </div>
 
       <div className="stats-panel">
+        <div className="stat-row salas-row">
+          <span className="stat-label">SALAS</span>
+          <span className="stat-value">{salas}</span>
+        </div>
         {Object.entries(stats).map(([stat, val]) => (
           <div className="stat-row" key={stat}>
             <span className="stat-label">
@@ -740,6 +803,15 @@ function App() {
           >
             <div className="modal-header">
               <h2>Combate</h2>
+              <label className="combate-switch">
+                <span>Jefe</span>
+                <input
+                  type="checkbox"
+                  checked={modoJefe}
+                  onChange={(e) => toggleJefe(e.target.checked)}
+                />
+                <span className="slider" />
+              </label>
               <button
                 className="modal-close"
                 onClick={() => setCombateModalOpen(false)}
@@ -780,9 +852,16 @@ function App() {
                         key={i}
                         className={`enemigo${h <= 0 ? " muerto" : ""}`}
                       >
-                        <span className="enemigo-label">E{i + 1}</span>
+                        <span className="enemigo-label">
+                          {TIPOS_ENEMIGO[combate.tipos?.[i] ?? "bicho"].icono}{" "}
+                          E{i + 1}
+                        </span>
                         <span className="enemigo-hp">
-                          {h <= 0 ? "💀" : `${h}/${combate.hpMax[i]}`}
+                          {h <= 0
+                            ? "💀"
+                            : `${h}/${combate.hpMax[i]} ${TIPOS_ENEMIGO[
+                                combate.tipos?.[i] ?? "bicho"
+                              ].nombre}`}
                         </span>
                         {h > 0 && (
                           <span className="enemigo-ctrl">
@@ -873,40 +952,14 @@ function App() {
                         </button>
                       </span>
                     </div>
-                    <div className="combate-field">
-                      <span className="combate-field-label">HP por enemigo</span>
-                      <span className="stepper">
-                        <button
-                          onClick={() =>
-                            setNuevoCombate((p) => ({
-                              ...p,
-                              hp: Math.max(1, p.hp - 1),
-                            }))
-                          }
-                          disabled={nuevoCombate.hp <= 1}
-                        >
-                          -
-                        </button>
-                        <span>{nuevoCombate.hp}</span>
-                        <button
-                          onClick={() =>
-                            setNuevoCombate((p) => ({
-                              ...p,
-                              hp: Math.min(9, p.hp + 1),
-                            }))
-                          }
-                        >
-                          +
-                        </button>
-                      </span>
-                    </div>
+                  </div>
+                  <div className="combate-escalado">
+                    Sala {salas} · {descripcionEscalado(salas)}
                   </div>
                   {modoTodo && (
                     <button
                       className="action-btn"
-                      onClick={() =>
-                        iniciarCombate(nuevoCombate.enemigos, nuevoCombate.hp)
-                      }
+                      onClick={() => iniciarCombate(nuevoCombate.enemigos)}
                     >
                       Empezar combate
                     </button>
