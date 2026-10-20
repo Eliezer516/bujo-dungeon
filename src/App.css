@@ -125,21 +125,41 @@ body {
   background: #e5e5e5;
   padding: 8px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
+}
+
+.stats-panel.con-botones {
+  grid-template-columns: 1fr 1fr;
 }
 
 .stat-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 6px;
   background: #fff;
-  padding: 6px 12px;
+  padding: 6px 10px;
   border-radius: 8px;
+  min-width: 0;
 }
 
-.salas-row {
-  grid-column: 1 / -1;
+.stats-panel.con-botones .stat-row {
+  gap: 4px;
+  padding: 6px 8px;
+}
+
+.stats-panel:not(.con-botones) .stat-row {
+  gap: 2px;
+  padding: 6px;
+}
+
+.stats-panel:not(.con-botones) .stat-label {
+  font-size: 0.62rem;
+}
+
+.stats-panel:not(.con-botones) .stat-value {
+  font-size: 0.9rem;
 }
 
 .stat-label {
@@ -147,6 +167,7 @@ body {
   font-weight: 600;
   color: #666;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .stat-value {
@@ -154,6 +175,7 @@ body {
   font-weight: bold;
   min-width: 18px;
   text-align: center;
+  white-space: nowrap;
 }
 
 .stat-btn {
@@ -421,6 +443,48 @@ body {
 
 .combate-switch input:checked + .slider::after {
   transform: translateX(18px);
+}
+
+.pergamino-intro {
+  margin: 0 0 12px;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.pergamino-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.pergamino-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px;
+  border: 2px solid #ddd;
+  border-radius: 12px;
+  background: #fafafa;
+  color: #222;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  touch-action: manipulation;
+}
+
+.pergamino-btn:active {
+  border-color: #8a6;
+  background: #f3f8f0;
+}
+
+.pergamino-icono {
+  font-size: 1.6rem;
+}
+
+.pergamino-nombre {
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: center;
 }
 
 .combate-die {
@@ -713,6 +777,10 @@ body {
   cursor: pointer;
   font-weight: 500;
   font-size: 1rem;
+}
+
+.config-toggle + .config-toggle {
+  margin-top: 14px;
 }
 
 .config-toggle input {

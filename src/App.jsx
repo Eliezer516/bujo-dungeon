@@ -169,6 +169,10 @@ function App() {
   }, []);
 
   const [modoTodo, setModoTodo] = useLocalStorage("bujo:modoTodo", false);
+  const [botonesStats, setBotonesStats] = useLocalStorage(
+    "bujo:botonesStats",
+    false,
+  );
   const [configOpen, setConfigOpen] = useState(false);
   const [reglasOpen, setReglasOpen] = useState(false);
   const [kitOpen, setKitOpen] = useState(false);
@@ -189,8 +193,10 @@ function App() {
 
   const [stats, setStats] = useLocalStorage("bujo:stats", {
     hp: 10,
+    hpMax: 10,
     fuerza: 3,
     escudo: 3,
+    escudoMax: 3,
     mochila: 4,
   });
   const [inventario, setInventario] = useLocalStorage("bujo:inventario", [
@@ -205,6 +211,8 @@ function App() {
   const [combateModalOpen, setCombateModalOpen] = useState(false);
   const [combateDado, setCombateDado] = useState("-");
   const [modoJefe, setModoJefe] = useLocalStorage("bujo:modoJefe", false);
+  const [pergaminoSlot, setPergaminoSlot] = useState(-1);
+  const [pergaminoOpen, setPergaminoOpen] = useState(false);
 
   const { rolling, start } = useRolling();
   const combateRoll = useRolling();
@@ -219,14 +227,23 @@ function App() {
 
   const updateStat = (stat, delta) => {
     setStats((prev) => {
-      const next = { ...prev, [stat]: Math.max(0, prev[stat] + delta) };
+      const max =
+        stat === "hp"
+          ? (prev.hpMax ?? 10)
+          : stat === "escudo"
+            ? (prev.escudoMax ?? 3)
+            : Infinity;
+      const next = {
+        ...prev,
+        [stat]: Math.max(0, Math.min(max, prev[stat] + delta)),
+      };
       if (stat === "mochila") ajustarInventario(next.mochila);
       return next;
     });
   };
 
   const iniciarPartida = (kit) => {
-    setStats({ hp: 10, fuerza: 3, escudo: 3, mochila: 4 });
+    setStats({ hp: 10, hpMax: 10, fuerza: 3, escudo: 3, escudoMax: 3, mochila: 4 });
     setInventario([...kit.items]);
     setSalas(0);
     setCartasTodo([]);
@@ -440,13 +457,91 @@ function App() {
     );
   };
 
-  const manejarSlot = (index) => {
-    if (inventario[index]) {
-      setInventario((prev) => prev.map((v, i) => (i === index ? null : v)));
-    } else {
+  const usarItem = (index) => {
+    const item = inventario[index];
+    if (!item) {
       setSlotSeleccionado(index);
       setPickerOpen(true);
+      return;
     }
+
+    // El reparador solo se usa entre salas o con el escudo a 0.
+    if (item === "reparador" && combate && stats.escudo > 0) {
+      trigger("error");
+      return;
+    }
+
+    if (item === "pergamino") {
+      setPergaminoSlot(index);
+      setPergaminoOpen(true);
+      return;
+    }
+
+    trigger("nudge");
+    if (item === "pocion") {
+      setStats((p) => ({
+        ...p,
+        hp: Math.min(p.hpMax ?? 10, p.hp + 3),
+      }));
+      // En combate, la poción gasta el turno del héroe.
+      if (combate && combate.turno < combate.enemigos) {
+        setCombate((prev) => {
+          if (!prev) return prev;
+          const next = { ...prev, turno: prev.turno + 1 };
+          if (next.turno >= prev.enemigos * 2) {
+            next.turno = 0;
+            next.ronda = prev.ronda + 1;
+          }
+          return next;
+        });
+      }
+    } else if (item === "reparador") {
+      setStats((p) => ({ ...p, escudo: p.escudoMax ?? 3 }));
+    } else if (item === "bomba") {
+      setStats((p) => ({ ...p, hp: Math.max(0, p.hp - 1) }));
+      terminarCombate();
+    }
+    setInventario((prev) => prev.map((v, i) => (i === index ? null : v)));
+  };
+
+  const descartarSlot = (index) => {
+    setInventario((prev) => prev.map((v, i) => (i === index ? null : v)));
+    trigger("warning");
+  };
+
+  const cerrarPergamino = () => {
+    setPergaminoOpen(false);
+    setPergaminoSlot(-1);
+  };
+
+  const aplicarPergamino = (tipo) => {
+    if (tipo === "hp") {
+      setStats((p) => ({
+        ...p,
+        hpMax: (p.hpMax ?? 10) + 2,
+        hp: p.hp + 2,
+      }));
+    } else if (tipo === "fuerza") {
+      setStats((p) => ({ ...p, fuerza: p.fuerza + 1 }));
+    } else if (tipo === "escudo") {
+      setStats((p) => ({
+        ...p,
+        escudoMax: (p.escudoMax ?? 3) + 1,
+        escudo: p.escudo + 1,
+      }));
+    } else if (tipo === "mochila") {
+      const nueva = (stats.mochila ?? 4) + 1;
+      setStats((p) => ({ ...p, mochila: nueva }));
+      setInventario((prev) => [...prev, null]);
+    }
+    if (pergaminoSlot !== -1) {
+      setInventario((prev) =>
+        prev.map((v, i) => (i === pergaminoSlot ? null : v)),
+      );
+    }
+    setPergaminoOpen(false);
+    setPergaminoSlot(-1);
+    trigger("success");
   };
 
   const seleccionarItem = (tipo) => {
@@ -547,38 +642,48 @@ function App() {
         )}
       </div>
 
-      <div className="stats-panel">
+      <div className={`stats-panel${botonesStats ? " con-botones" : ""}`}>
         <div className="stat-row salas-row">
           <span className="stat-label">SALAS</span>
           <span className="stat-value">{salas}</span>
         </div>
-        {Object.entries(stats).map(([stat, val]) => (
-          <div className="stat-row" key={stat}>
-            <span className="stat-label">
-              {stat === "hp"
-                ? "HP"
-                : stat === "fuerza"
-                  ? "FUE"
-                  : stat === "escudo"
-                    ? "ESC"
-                    : "MOCH"}
-            </span>
-            <button
-              className="stat-btn minus"
-              onClick={() => updateStat(stat, -1)}
-              disabled={val <= 0}
-            >
-              -
-            </button>
-            <span className="stat-value">{val}</span>
-            <button
-              className="stat-btn plus"
-              onClick={() => updateStat(stat, 1)}
-            >
-              +
-            </button>
-          </div>
-        ))}
+        {["hp", "fuerza", "escudo"].map((stat) => {
+          const val = stats[stat];
+          const max =
+            stat === "hp"
+              ? (stats.hpMax ?? 10)
+              : stat === "escudo"
+                ? (stats.escudoMax ?? 3)
+                : null;
+          return (
+            <div className="stat-row" key={stat}>
+              <span className="stat-label">
+                {stat === "hp" ? "HP" : stat === "fuerza" ? "FUE" : "ESC"}
+              </span>
+              {botonesStats && (
+                <button
+                  className="stat-btn minus"
+                  onClick={() => updateStat(stat, -1)}
+                  disabled={val <= 0}
+                >
+                  -
+                </button>
+              )}
+              <span className="stat-value">
+                {max !== null ? `${val}/${max}` : val}
+              </span>
+              {botonesStats && (
+                <button
+                  className="stat-btn plus"
+                  onClick={() => updateStat(stat, 1)}
+                  disabled={max !== null && val >= max}
+                >
+                  +
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <div className="inventario-panel">
@@ -586,7 +691,12 @@ function App() {
           <div
             className={`slot ${item ? "filled" : "empty"}`}
             key={i}
-            onClick={() => manejarSlot(i)}
+            onClick={() => usarItem(i)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              if (item) descartarSlot(i);
+            }}
+            title={item ? "Clic: usar · Clic largo: descartar" : "Añadir item"}
           >
             {item ? ITEMS[item] : ""}
           </div>
@@ -713,6 +823,15 @@ function App() {
                       setCombate(null);
                     }
                   }}
+                />
+                <span className="slider" />
+              </label>
+              <label className="config-toggle">
+                <span>Botones de stats (+/-)</span>
+                <input
+                  type="checkbox"
+                  checked={botonesStats}
+                  onChange={(e) => setBotonesStats(e.target.checked)}
                 />
                 <span className="slider" />
               </label>
@@ -966,6 +1085,56 @@ function App() {
                   )}
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pergaminoOpen && (
+        <div className="modal-backdrop" onClick={cerrarPergamino}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Pergamino de Mejora</h2>
+              <button
+                className="modal-close"
+                onClick={cerrarPergamino}
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="pergamino-intro">Elige qué quieres mejorar:</p>
+              <div className="pergamino-grid">
+                <button
+                  className="pergamino-btn"
+                  onClick={() => aplicarPergamino("hp")}
+                >
+                  <span className="pergamino-icono">❤️</span>
+                  <span className="pergamino-nombre">+2 HP Máx</span>
+                </button>
+                <button
+                  className="pergamino-btn"
+                  onClick={() => aplicarPergamino("fuerza")}
+                >
+                  <span className="pergamino-icono">⚔️</span>
+                  <span className="pergamino-nombre">+1 Fuerza</span>
+                </button>
+                <button
+                  className="pergamino-btn"
+                  onClick={() => aplicarPergamino("escudo")}
+                >
+                  <span className="pergamino-icono">🛡️</span>
+                  <span className="pergamino-nombre">+1 Escudo Máx</span>
+                </button>
+                <button
+                  className="pergamino-btn"
+                  onClick={() => aplicarPergamino("mochila")}
+                >
+                  <span className="pergamino-icono">🎒</span>
+                  <span className="pergamino-nombre">+1 Espacio en Mochila</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
