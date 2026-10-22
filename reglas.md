@@ -52,23 +52,23 @@ Al colocar una sala, debes asegurarte de no dejar "islas" de casillas vacías ro
 **Generación de Sala**
 
 | Tabla S: Tamaño | Tabla P: Puertas | Tabla E: Enemigos |
-| :--------------- | :--------------- | :---------------- |
-| **1-2** = 3      | **1-4** = +1     | **1-2** = 1       |
-| **3-4** = 4      | **5-6** = +2     | **3-4** = 2       |
-| **5** = 5        |                  | **5-6** = 3       |
-| **6** = 6        |                  |                   |
+| :-------------- | :--------------- | :---------------- |
+| **1-2** = 3     | **1-4** = +1     | **1-2** = 1       |
+| **3-4** = 4     | **5-6** = +2     | **3-4** = 2       |
+| **5** = 5       |                  | **5-6** = 3       |
+| **6** = 6       |                  |                   |
 
 _(Nota: Las puertas adicionales se suman a la puerta por la que entraste)._
 
 **Botín y Recompensas**
 
-| Tabla C: ¿Cofre? | Tabla CC: Contenido        |
-| :--------------- | :------------------------- |
-| **1-3** = No     | **1** = 💥 Trampa (-1 HP)  |
-| **4-6** = Sí     | **2** = Poción de Curación |
-|                  | **3** = Reparador de Escudo |
-|                  | **4** = Pergamino de Mejora |
-|                  | **5-6** = Bomba de Escape |
+| Tabla C: ¿Cofre? | Tabla CC: Contenido           |
+| :--------------- | :---------------------------- |
+| **1-3** = No     | **1** = 💥 Trampa (-1 HP)     |
+| **4-6** = Sí     | **2** = Poción de Curación    |
+|                  | **3** = Reparador de Escudo   |
+|                  | **4** = Bomba de Escape       |
+|                  | **5-6** = Pergamino de Mejora |
 
 ### ⚔️ COMBATE Y ESCALADO
 

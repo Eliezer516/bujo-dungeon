@@ -487,6 +487,88 @@ body {
   text-align: center;
 }
 
+.cofre-lleno-intro {
+  margin: 0 0 12px;
+  color: #444;
+  font-size: 0.95rem;
+}
+
+.cofre-lleno-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 2px solid #222;
+  border-radius: 12px;
+  background: #f7f7f7;
+}
+
+.cofre-lleno-item-icono {
+  font-size: 1.6rem;
+}
+
+.cofre-lleno-item-nombre {
+  font-weight: 600;
+}
+
+.cofre-lleno-descartar {
+  background: #a22;
+  margin-top: 16px;
+}
+
+.cofre-lleno-descartar:active {
+  background: #822;
+}
+
+.cofre-lleno-sub {
+  margin: 18px 0 8px;
+  color: #666;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.cofre-lleno-slots {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.cofre-lleno-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 2px solid #ddd;
+  border-radius: 10px;
+  background: #fff;
+  color: #222;
+  font-family: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.cofre-lleno-slot:active {
+  border-color: #4a2;
+  background: #f3f8f0;
+}
+
+.cofre-lleno-slot:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.cofre-lleno-icono {
+  font-size: 1.3rem;
+}
+
+.cofre-lleno-nombre {
+  font-weight: 500;
+}
+
 .combate-die {
   font-size: 3rem;
   font-weight: bold;

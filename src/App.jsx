@@ -29,8 +29,8 @@ const RESULTADOS = {
         : r === 3
           ? "Reparador de Escudo"
           : r === 4
-            ? "Pergamino de Mejora"
-            : "Bomba de Escape",
+            ? "Bomba de Escape"
+            : "Pergamino de Mejora",
 };
 
 const ETIQUETAS = {
@@ -48,6 +48,25 @@ const ITEMS = {
   bomba: "💣",
   pergamino: "📜",
 };
+
+const NOMBRES_ITEMS = {
+  pocion: "Poción de Curación",
+  reparador: "Reparador de Escudo",
+  bomba: "Bomba de Escape",
+  pergamino: "Pergamino de Mejora",
+};
+
+// Traduce el resultado de la tabla de contenido a un item de la mochila.
+const itemDeContenido = (r) =>
+  r === 2
+    ? "pocion"
+    : r === 3
+      ? "reparador"
+      : r === 4
+        ? "pergamino"
+        : r >= 5
+          ? "bomba"
+          : null;
 
 const KITS = [
   {
@@ -213,6 +232,14 @@ function App() {
   const [modoJefe, setModoJefe] = useLocalStorage("bujo:modoJefe", false);
   const [pergaminoSlot, setPergaminoSlot] = useState(-1);
   const [pergaminoOpen, setPergaminoOpen] = useState(false);
+  const [itemCofre, setItemCofre] = useState(null);
+
+  // Referencia sincronizada para poder añadir varios items seguidos sin
+  // depender de un estado obsoleto.
+  const inventarioRef = useRef(inventario);
+  useEffect(() => {
+    inventarioRef.current = inventario;
+  }, [inventario]);
 
   const { rolling, start } = useRolling();
   const combateRoll = useRolling();
@@ -243,7 +270,14 @@ function App() {
   };
 
   const iniciarPartida = (kit) => {
-    setStats({ hp: 10, hpMax: 10, fuerza: 3, escudo: 3, escudoMax: 3, mochila: 4 });
+    setStats({
+      hp: 10,
+      hpMax: 10,
+      fuerza: 3,
+      escudo: 3,
+      escudoMax: 3,
+      mochila: 4,
+    });
     setInventario([...kit.items]);
     setSalas(0);
     setCartasTodo([]);
@@ -398,6 +432,7 @@ function App() {
         setEtiqueta(ETIQUETAS[tabla]);
         setResultado(RESULTADOS[tabla](finalR));
         if (tabla === "sala") setSalas((n) => n + 1);
+        if (tabla === "contenido") recibirItem(itemDeContenido(finalR));
         if (tabla === "enemigos")
           setNuevoCombate((prev) => ({
             ...prev,
@@ -509,6 +544,38 @@ function App() {
     trigger("warning");
   };
 
+  // Añade el botín del cofre a la primera ranura libre o abre el modal de
+  // mochila llena para descartarlo o cambiarlo por otro item.
+  const recibirItem = (tipo) => {
+    if (!tipo) return;
+    const actual = inventarioRef.current;
+    const libre = actual.findIndex((v) => !v);
+    if (libre !== -1) {
+      const next = [...actual];
+      next[libre] = tipo;
+      inventarioRef.current = next;
+      setInventario(next);
+    } else {
+      setItemCofre(tipo);
+    }
+  };
+
+  const descartarItemCofre = () => {
+    setItemCofre(null);
+    trigger("warning");
+  };
+
+  const cambiarItemCofre = (index) => {
+    if (!itemCofre) return;
+    const next = inventarioRef.current.map((v, i) =>
+      i === index ? itemCofre : v,
+    );
+    inventarioRef.current = next;
+    setInventario(next);
+    setItemCofre(null);
+    trigger("success");
+  };
+
   const cerrarPergamino = () => {
     setPergaminoOpen(false);
     setPergaminoSlot(-1);
@@ -562,9 +629,7 @@ function App() {
   const totalTurnos = combate ? combate.enemigos * 2 : 0;
   const turnoActual = combate ? combate.turno : 0;
   const esTurnoJugador = combate ? turnoActual < combate.enemigos : true;
-  const enemigosVivos = combate
-    ? combate.hp.filter((h) => h > 0).length
-    : 0;
+  const enemigosVivos = combate ? combate.hp.filter((h) => h > 0).length : 0;
   const secuenciaTurnos = [];
   if (combate) {
     for (let i = 0; i < combate.enemigos; i++)
@@ -625,11 +690,14 @@ function App() {
                   <button
                     className="action-btn cofre-btn"
                     onClick={() => {
-                      const esTrampa = cartasTodo
-                        .find((c) => c.tabla === "contenido")
-                        .contenidoReal.includes("Trampa");
+                      const contenido = cartasTodo.find(
+                        (c) => c.tabla === "contenido",
+                      );
+                      const esTrampa =
+                        contenido.contenidoReal.includes("Trampa");
                       trigger(esTrampa ? "error" : "success");
                       setCofreAbierto(true);
+                      recibirItem(itemDeContenido(contenido.num));
                     }}
                     disabled={rolling}
                   >
@@ -915,7 +983,10 @@ function App() {
       )}
 
       {combateModalOpen && (
-        <div className="modal-backdrop" onClick={() => setCombateModalOpen(false)}>
+        <div
+          className="modal-backdrop"
+          onClick={() => setCombateModalOpen(false)}
+        >
           <div
             className="modal-content combate-modal"
             onClick={(e) => e.stopPropagation()}
@@ -940,7 +1011,9 @@ function App() {
               </button>
             </div>
             <div className="modal-body">
-              <p className={`combate-die ${combateRoll.rolling ? "rolling" : ""}`}>
+              <p
+                className={`combate-die ${combateRoll.rolling ? "rolling" : ""}`}
+              >
                 {combateDado}
               </p>
               {combate ? (
@@ -972,15 +1045,16 @@ function App() {
                         className={`enemigo${h <= 0 ? " muerto" : ""}`}
                       >
                         <span className="enemigo-label">
-                          {TIPOS_ENEMIGO[combate.tipos?.[i] ?? "bicho"].icono}{" "}
-                          E{i + 1}
+                          {TIPOS_ENEMIGO[combate.tipos?.[i] ?? "bicho"].icono} E
+                          {i + 1}
                         </span>
                         <span className="enemigo-hp">
                           {h <= 0
                             ? "💀"
-                            : `${h}/${combate.hpMax[i]} ${TIPOS_ENEMIGO[
-                                combate.tipos?.[i] ?? "bicho"
-                              ].nombre}`}
+                            : `${h}/${combate.hpMax[i]} ${
+                                TIPOS_ENEMIGO[combate.tipos?.[i] ?? "bicho"]
+                                  .nombre
+                              }`}
                         </span>
                         {h > 0 && (
                           <span className="enemigo-ctrl">
@@ -1132,8 +1206,68 @@ function App() {
                   onClick={() => aplicarPergamino("mochila")}
                 >
                   <span className="pergamino-icono">🎒</span>
-                  <span className="pergamino-nombre">+1 Espacio en Mochila</span>
+                  <span className="pergamino-nombre">
+                    +1 Espacio en Mochila
+                  </span>
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {itemCofre && (
+        <div className="modal-backdrop" onClick={descartarItemCofre}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Mochila llena</h2>
+              <button
+                className="modal-close"
+                onClick={descartarItemCofre}
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="cofre-lleno-intro">
+                Has encontrado un nuevo item, pero no queda espacio en la
+                mochila.
+              </p>
+              <div className="cofre-lleno-item">
+                <span className="cofre-lleno-item-icono">
+                  {ITEMS[itemCofre]}
+                </span>
+                <span className="cofre-lleno-item-nombre">
+                  {NOMBRES_ITEMS[itemCofre]}
+                </span>
+              </div>
+              <button
+                className="action-btn cofre-lleno-descartar"
+                onClick={descartarItemCofre}
+              >
+                Descartar el item
+              </button>
+              <p className="cofre-lleno-sub">
+                O cámbialo por uno de tu mochila:
+              </p>
+              <div className="cofre-lleno-slots">
+                {inventario.map((it, i) => (
+                  <button
+                    key={i}
+                    className="cofre-lleno-slot"
+                    onClick={() => it && cambiarItemCofre(i)}
+                    disabled={!it}
+                    title={it ? `Sustituir ${NOMBRES_ITEMS[it]}` : "Vacío"}
+                  >
+                    <span className="cofre-lleno-icono">
+                      {it ? ITEMS[it] : ""}
+                    </span>
+                    <span className="cofre-lleno-nombre">
+                      {it ? NOMBRES_ITEMS[it] : "Vacío"}
+                    </span>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
